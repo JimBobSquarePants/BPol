@@ -6,9 +6,9 @@
 
 *Francisco Martínez, Carlos Ogayar, Juan R. Jiménez, Antonio J. Rueda*
   
-https://sci-hub.tw/10.1016/j.advengsoft.2013.04.004
+https://sci-hub.se/10.1016/j.advengsoft.2013.04.004
 
-This repository contains the early beginnings of an attempted port of the original public domain C++ implementation by the main author of the paper Francisco Martínez.   
+This repository contains the beginnings of an attempted port of the original public domain C++ implementation by the main author of the paper Francisco Martínez.   
 
 The original code can be found in the reference folder.  
   
