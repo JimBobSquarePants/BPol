@@ -196,27 +196,27 @@ public sealed class Polygon
                 // The segment must be inserted into S
                 e.PosSL = sl.Insert(e);
 
-                if (!processed[e.Polygon])
+                if (!processed[e.ContourId])
                 {
-                    processed[e.Polygon] = true;
+                    processed[e.ContourId] = true;
                     nProcessed++;
                     int prev = e.PosSL;
 
                     if (prev == 0)
                     {
-                        this.Contour(e.Polygon).SetCounterClockwise();
+                        this.Contour(e.ContourId).SetCounterClockwise();
                     }
                     else
                     {
                         // Get the preceding event
                         SweepEvent prevEvent = sl[--prev];
-                        Contour contour = this.Contour(e.Polygon);
-                        Contour prevContour = this.Contour(prevEvent.Polygon);
+                        Contour contour = this.Contour(e.ContourId);
+                        Contour prevContour = this.Contour(prevEvent.ContourId);
                         if (!prevEvent.InOut)
                         {
-                            holeOf[e.Polygon] = prevEvent.Polygon;
+                            holeOf[e.ContourId] = prevEvent.ContourId;
                             contour.External = false;
-                            prevContour.AddHole(e.Polygon);
+                            prevContour.AddHole(e.ContourId);
 
                             if (prevContour.CounterClockwise())
                             {
@@ -227,12 +227,12 @@ public sealed class Polygon
                                 contour.SetCounterClockwise();
                             }
                         }
-                        else if (holeOf[prevEvent.Polygon] != -1)
+                        else if (holeOf[prevEvent.ContourId] != -1)
                         {
-                            holeOf[e.Polygon] = holeOf[prevEvent.Polygon];
+                            holeOf[e.ContourId] = holeOf[prevEvent.ContourId];
                             contour.External = false;
-                            Contour hole = this.Contour(holeOf[e.Polygon]);
-                            hole.AddHole(e.Polygon);
+                            Contour hole = this.Contour(holeOf[e.ContourId]);
+                            hole.AddHole(e.ContourId);
 
                             if (hole.CounterClockwise())
                             {

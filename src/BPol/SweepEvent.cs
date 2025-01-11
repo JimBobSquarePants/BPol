@@ -22,12 +22,21 @@ public class SweepEvent
     /// </summary>
     /// <param name="point">The point.</param>
     /// <param name="left">Whether the point is the left (source) endpoint of the segment.</param>
-    /// <param name="polygon">The polygon.</param>
-    public SweepEvent(Vector2 point, bool left, int polygon)
+    /// <param name="contourId">The ID of the contour to which the event belongs.</param>
+    /// <param name="polygonType">The polygon type.</param>
+    /// <param name="edgeType">The edge type.</param>
+    public SweepEvent(
+        Vector2 point,
+        bool left,
+        int contourId,
+        PolygonType polygonType = PolygonType.SUBJECT,
+        EdgeType edgeType = EdgeType.NORMAL)
     {
         this.Point = point;
         this.Left = left;
-        this.Polygon = polygon;
+        this.ContourId = contourId;
+        this.Polygon = polygonType;
+        this.EdgeType = edgeType;
         this.Id = Interlocked.Increment(ref nextId); // Ensure thread safety if needed
     }
 
@@ -43,9 +52,19 @@ public class SweepEvent
     public bool Left { get; set; }
 
     /// <summary>
+    /// Gets the ID of the contour to which the event belongs.
+    /// </summary>
+    public int ContourId { get; }
+
+    /// <summary>
     /// Gets index of the polygon to which the associated segment belongs to;
     /// </summary>
-    public int Polygon { get; }
+    public PolygonType Polygon { get; }
+
+    /// <summary>
+    /// Gets the type of the edge.
+    /// </summary>
+    public EdgeType EdgeType { get; }
 
     /// <summary>
     /// Gets a unique id for each event.
