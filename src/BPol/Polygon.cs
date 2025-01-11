@@ -1,203 +1,260 @@
-﻿// Copyright (c) Six Labors.
+// Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace BPol
+namespace BPol;
+
+/// <summary>
+/// Represents a complex polygon.
+/// </summary>
+public sealed class Polygon
 {
     /// <summary>
-    /// Represents a complex polygon.
+    /// The set of contours conforming the polygon.
     /// </summary>
-    public sealed class Polygon
+    private readonly List<Contour> contours = new();
+
+    /// <summary>
+    /// Gets the number of contours.
+    /// </summary>
+    public int NContours
     {
-        // The set of contours conforming the polugon.
-        private readonly List<Contour> contours = new List<Contour>();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.contours.Count;
+    }
 
-        /// <summary>
-        /// Gets the number of contours.
-        /// </summary>
-        public int NContours
+    /// <summary>
+    /// Gets the number of contours.
+    /// </summary>
+    /// <returns>The <see cref="int"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int NVertices()
+    {
+        int nv = 0;
+        for (int i = 0; i < this.NContours; i++)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return this.contours.Count; }
+            nv += this.contours[i].NVertices;
         }
 
-        /// <summary>
-        /// Gets the number of contours.
-        /// </summary>
-        /// <returns>The <see cref="int"/>.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int NVertices()
+        return nv;
+    }
+
+    /// <summary>
+    /// Joins the other polygon to this instance.
+    /// </summary>
+    /// <param name="pol">The polygon to join.</param>
+    public void Join(Polygon pol)
+    {
+        int size = this.NContours;
+        for (int i = 0; i < pol.NContours; ++i)
         {
-            int nv = 0;
-            for (int i = 0; i < this.NContours; i++)
+            this.PushBack(pol.Contour(i));
+            this.Back().ClearHoles();
+
+            for (int j = 0; j < pol.Contour(i).NHoles; ++j)
             {
-                nv += this.contours[i].NVertices;
+                this.Back().AddHole(pol.Contour(i).Hole(j) + size);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get the p-th contour of the polygon.
+    /// </summary>
+    /// <param name="p">The index of the contour.</param>
+    /// <returns>The <see cref="Contour"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Contour Contour(int p) => this.contours[p];
+
+    /// <summary>
+    /// Gets the bounding box.
+    /// </summary>
+    /// <returns>The <see cref="Box2"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Box2 BBox()
+    {
+        if (this.NContours == 0)
+        {
+            return default;
+        }
+
+        Box2 b = this.contours[0].BBox();
+        for (int i = 1; i < this.NContours; i++)
+        {
+            b = b.Add(this.contours[i].BBox());
+        }
+
+        return b;
+    }
+
+    /// <summary>
+    /// Offsets the polygon by the specified xy-coordinates.
+    /// </summary>
+    /// <param name="x">The x-coordinate.</param>
+    /// <param name="y">The y-coordinate.</param>
+    public void Move(float x, float y)
+    {
+        for (int i = 0; i < this.contours.Count; i++)
+        {
+            this.contours[i].Move(x, y);
+        }
+    }
+
+    /// <summary>
+    /// Adds the contour the end of the collection.
+    /// </summary>
+    /// <param name="contour">The contour to add.</param>
+    public void PushBack(Contour contour) => this.contours.Add(contour);
+
+    /// <summary>
+    /// Returns the last contour in the polygon.
+    /// </summary>
+    /// <returns>The <see cref="Contour"/>.</returns>
+    public Contour Back() => this.contours[^1];
+
+    /// <summary>
+    /// Removes the contour at the end of the collection.
+    /// </summary>
+    public void PopBack() => this.contours.RemoveAt(this.contours.Count - 1);
+
+    /// <summary>
+    /// Clears the contours.
+    /// </summary>
+    public void Clear() => this.contours.Clear();
+
+    /// <summary>
+    /// Computes and holes in the polygon.
+    /// </summary>
+    public void ComputeHoles()
+    {
+        if (this.NContours < 2)
+        {
+            if (this.NContours == 1 && this.Contour(0).Clockwise())
+            {
+                this.Contour(0).ChangeOrientation();
             }
 
-            return nv;
+            return;
         }
 
-        /// <summary>
-        /// Joins the other polygon to this instance.
-        /// </summary>
-        /// <param name="pol">The polygon to join.</param>
-        public void Join(Polygon pol)
+        int initCapacity = this.NVertices() * 2;
+        List<SweepEvent> ev = new(initCapacity);
+        List<SweepEvent> evp = new(initCapacity);
+        for (int i = 0; i < this.NContours; i++)
         {
-            var size = this.NContours;
-            for (int i = 0; i < pol.NContours; ++i)
+            Contour contour = this.Contour(i);
+            contour.SetCounterClockwise();
+            for (int j = 0; j < contour.NEdges; j++)
             {
-                this.PushBack(pol.Contour(i));
-                this.Back().ClearHoles();
-
-                for (int j = 0; j < pol.Contour(i).NHoles; ++j)
+                Segment s = contour.Segment(j);
+                if (s.IsVertical())
                 {
-                    this.Back().AddHole(pol.Contour(i).Hole(j) + size);
+                    // Vertical segments are not processed.
+                    continue;
                 }
-            }
-        }
 
-        /// <summary>
-        /// Get the p-th contour of the polygon.
-        /// </summary>
-        /// <param name="p">The index of the contour.</param>
-        /// <returns>The <see cref="Contour"/>.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Contour Contour(int p) => this.contours[p];
+                ev.Add(new SweepEvent(s.Source, true, i));
+                ev.Add(new SweepEvent(s.Target, true, i));
+                SweepEvent se1 = ev[^2];
+                SweepEvent se2 = ev[^1];
+                se1.OtherEvent = se2;
+                se2.OtherEvent = se1;
 
-        /// <summary>
-        /// Gets the bounding box.
-        /// </summary>
-        /// <returns>The <see cref="Box2"/>.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Box2 BBox()
-        {
-            if (this.NContours == 0)
-            {
-                return default;
-            }
-
-            Box2 b = this.contours[0].BBox();
-            for (int i = 1; i < this.NContours; i++)
-            {
-                b = b.Add(this.contours[i].BBox());
-            }
-
-            return b;
-        }
-
-        /// <summary>
-        /// Offsets the polygon by the specified xy-coordinates.
-        /// </summary>
-        /// <param name="x">The x-coordinate.</param>
-        /// <param name="y">The y-coordinate.</param>
-        public void Move(float x, float y)
-        {
-            for (int i = 0; i < this.contours.Count; i++)
-            {
-                this.contours[i].Move(x, y);
-            }
-        }
-
-        /// <summary>
-        /// Adds the contour the end of the collection.
-        /// </summary>
-        /// <param name="contour">The contour to add.</param>
-        public void PushBack(Contour contour) => this.contours.Add(contour);
-
-        /// <summary>
-        /// Returns the last contour in the polygon.
-        /// </summary>
-        /// <returns>The <see cref="Contour"/>.</returns>
-        public Contour Back() => this.contours[this.contours.Count - 1];
-
-        /// <summary>
-        /// Removes the contour at the end of the collection.
-        /// </summary>
-        public void PopBack() => this.contours.RemoveAt(this.contours.Count - 1);
-
-        /// <summary>
-        /// Clears the contours.
-        /// </summary>
-        public void Clear() => this.contours.Clear();
-
-        /// <summary>
-        /// Computes and holes in the polygon.
-        /// </summary>
-        public void ComputeHoles()
-        {
-            if (this.NContours < 2)
-            {
-                if (this.NContours == 1 && this.Contour(0).Clockwise())
+                if (se1.Point.X < se2.Point.X)
                 {
-                    this.Contour(0).ChangeOrientation();
+                    se2.Left = false;
+                    se1.InOut = false;
+                }
+                else
+                {
+                    se1.Left = false;
+                    se1.InOut = true;
                 }
 
-                return;
+                evp.Add(se1);
+                evp.Add(se2);
             }
+        }
 
-            int initCapacity = this.NVertices() * 2;
-            List<SweepEvent> ev = new List<SweepEvent>(initCapacity);
-            List<SweepEvent> evp = new List<SweepEvent>(initCapacity);
-            for (int i = 0; i < this.NContours; i++)
+        evp.Sort(SegmentComparer.CompareEvents);
+
+        StatusLine sl = new(); // Status line.
+        Span<bool> processed = new bool[this.NContours];
+        Span<int> holeOf = new int[this.NContours]; // -1;
+        holeOf.Fill(-1);
+
+        int nProcessed = 0;
+        for (int i = 0; i < evp.Count && nProcessed < this.NContours; i++)
+        {
+            SweepEvent e = evp[i];
+
+            if (e.Left)
             {
-                Contour contour = this.Contour(i);
-                contour.SetCounterClockwise();
-                for (int j = 0; j < contour.NEdges; j++)
+                // The segment must be inserted into S
+                e.PosSL = sl.Insert(e);
+
+                if (!processed[e.Polygon])
                 {
-                    Segment s = contour.Segment(j);
-                    if (s.IsVertical())
-                    {
-                        // Vertical segments are not processed.
-                        continue;
-                    }
+                    processed[e.Polygon] = true;
+                    nProcessed++;
+                    int prev = e.PosSL;
 
-                    ev.Add(new SweepEvent(s.Source, true, i));
-                    ev.Add(new SweepEvent(s.Target, true, i));
-                    SweepEvent se1 = ev[ev.Count - 2];
-                    SweepEvent se2 = ev[ev.Count - 1];
-                    se1.OtherEvent = se2;
-                    se2.OtherEvent = se1;
-
-                    if (se1.Point.X < se2.Point.X)
+                    if (prev == 0)
                     {
-                        se2.Left = false;
-                        se1.InOut = false;
+                        this.Contour(e.Polygon).SetCounterClockwise();
                     }
                     else
                     {
-                        se1.Left = false;
-                        se1.InOut = true;
-                    }
+                        // Get the preceding event
+                        SweepEvent prevEvent = sl[--prev];
+                        Contour contour = this.Contour(e.Polygon);
+                        Contour prevContour = this.Contour(prevEvent.Polygon);
+                        if (!prevEvent.InOut)
+                        {
+                            holeOf[e.Polygon] = prevEvent.Polygon;
+                            contour.External = false;
+                            prevContour.AddHole(e.Polygon);
 
-                    evp.Add(se1);
-                    evp.Add(se2);
+                            if (prevContour.CounterClockwise())
+                            {
+                                contour.SetClockwise();
+                            }
+                            else
+                            {
+                                contour.SetCounterClockwise();
+                            }
+                        }
+                        else if (holeOf[prevEvent.Polygon] != -1)
+                        {
+                            holeOf[e.Polygon] = holeOf[prevEvent.Polygon];
+                            contour.External = false;
+                            Contour hole = this.Contour(holeOf[e.Polygon]);
+                            hole.AddHole(e.Polygon);
+
+                            if (hole.CounterClockwise())
+                            {
+                                contour.SetClockwise();
+                            }
+                            else
+                            {
+                                contour.SetCounterClockwise();
+                            }
+                        }
+                        else
+                        {
+                            contour.SetCounterClockwise();
+                        }
+                    }
                 }
             }
-
-            evp.Sort(SegmentComparer.CompareEvents);
-
-            SortedSet<SweepEvent> sl = new SortedSet<SweepEvent>(); // Status line.
-            List<bool> processed = new List<bool>(this.NContours);
-            List<int> holeOf = Repeated(-1, this.NContours); // -1;
-            uint nProcessed = 0;
-
-            throw new NotImplementedException();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static List<T> Repeated<T>(T value, int count)
-        {
-            // Note we do not use an initial enumerable here to avoid copying.
-            List<T> ret = new List<T>(count);
-            for (int i = 0; i < count; i++)
+            else
             {
-                ret.Add(value);
+                // The segment must be removed from S
+                sl.RemoveAt(e.OtherEvent.PosSL);
             }
-
-            return ret;
         }
     }
 }
