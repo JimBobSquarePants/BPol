@@ -27,6 +27,13 @@ public sealed class Polygon
     }
 
     /// <summary>
+    /// Gets the contour at the specified index.
+    /// </summary>
+    /// <param name="index">The index of the contour.</param>
+    /// <returns>The contour at the given index.</returns>
+    public Contour this[int index] => this.contours[index];
+
+    /// <summary>
     /// Gets the number of contours.
     /// </summary>
     /// <returns>The <see cref="int"/>.</returns>
@@ -179,7 +186,7 @@ public sealed class Polygon
             }
         }
 
-        evp.Sort(SegmentComparer.CompareEvents);
+        evp.Sort(new SweepEventComparer());
 
         StatusLine sl = new(); // Status line.
         Span<bool> processed = new bool[this.NContours];

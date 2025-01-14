@@ -4,7 +4,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 
 namespace BPol;
 
@@ -13,97 +12,66 @@ namespace BPol;
 /// </summary>
 public sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
 {
+    private readonly SweepEventComparer eventComparer = new();
+
     /// <inheritdoc/>
     public int Compare(SweepEvent x, SweepEvent y)
     {
-        // Reference equals?
-        if (x == y)
+        // If the events are the same, return 0 (no order difference)
+        if (ReferenceEquals(x, y))
         {
             return 0;
         }
 
-        if (PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.Point) != 0F
-            || PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point) != 0)
+        // Check if the segments are collinear by comparing their signed areas
+        float area1 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.Point);
+        float area2 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point);
+
+        if (area1 != 0F || area2 != 0F)
         {
             // Segments are not collinear
-            // If they share their left endpoint use the right endpoint to sort.
+            // If they share their left endpoint, use the right endpoint to sort
             if (x.Point == y.Point)
             {
                 return x.Below(y.OtherEvent.Point) ? -1 : 1;
             }
 
-            // Different points
-            // has the segment associated to 'x' been sorted in evp before
-            // the segment associated to 'y'?
-            if (CompareEvents(x, y) < 0)
+            // Different left endpoints: use the y-coordinate to sort if x-coordinates are the same
+            if (x.Point.X == y.Point.X)
             {
-                return x.Below(y.Point) ? -1 : 1;
+                return x.Point.Y < y.Point.Y ? -1 : 1;
             }
 
-            // The segment associated to 'y' has been sorted in evp before the segment associated to 'x'
-            return y.Above(x.Point) ? 1 : -1;
+            // Use the sweep event order to determine the comparison
+            int compResult = this.eventComparer.Compare(x, y);
+            if (compResult < 0)
+            {
+                return y.Above(x.Point) ? 1 : -1;
+            }
+
+            // The line segment associated with le2 has been inserted after le1
+            return x.Below(y.Point) ? -1 : 1;
         }
 
-        // Segments are collinear. Just a consistent criterion is used
+        // Segments are collinear
+        if (x.ContourId != y.ContourId)
+        {
+            return x.ContourId.CompareTo(y.ContourId);
+        }
+
+        // Use a consistent ordering criterion for collinear segments with the same contour ID
         if (x.Point == y.Point)
         {
-            // Since they are geometrically identical, we impose a consistent but arbitrary order
-            // by comparing their unique IDs. This ensures stable, deterministic sorting without
-            // treating them as equal, similar to pointer comparison in C++.
-            return x.Id < y.Id ? -1 : 1;
+            return x.Id.CompareTo(y.Id);
         }
 
-        return CompareEvents(x, y);
-    }
-
-    /// <summary>
-    /// Compares two sweep events.
-    /// </summary>
-    /// <param name="x">The left hand sweep event.</param>
-    /// <param name="y">The right hand sweep event.</param>
-    /// <returns>An <see cref="int"/> that indicates the relative values of x and y.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int CompareEvents(SweepEvent x, SweepEvent y)
-    {
-        if (x.Point.X < y.Point.X)
-        {
-            // Different x coordinate
-            return -1;
-        }
-
-        if (y.Point.X < x.Point.X)
-        {
-            // Different x coordinate
-            return 1;
-        }
-
-        if (x.Point != y.Point)
-        {
-            // Different points, but same x coordinate.
-            // The event with lower y coordinate is processed first
-            return x.Point.Y < y.Point.Y ? -1 : 1;
-        }
-
-        if (x.Left != y.Left)
-        {
-            // Same point, but one is a left endpoint and the other
-            // a right endpoint. The right endpoint is processed first
-            return x.Left ? 1 : -1;
-        }
-
-        // Same point, both events are left endpoints or both are right endpoints.
-        // The event associate to the bottom segment is processed first
-        return x.Below(y.OtherEvent.Point) ? -1 : 1;
+        // Fall back to the sweep event comparator for final comparison
+        return this.eventComparer.Compare(x, y);
     }
 
     /// <inheritdoc/>
     public int Compare(object x, object y)
     {
-        if (x == y)
-        {
-            return 0;
-        }
-
         if (x == null)
         {
             return -1;
@@ -119,6 +87,6 @@ public sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             return this.Compare(a, b);
         }
 
-        throw new ArgumentException(string.Empty, nameof(x));
+        throw new ArgumentException("Both arguments must be of type SweepEvent.", nameof(x));
     }
 }

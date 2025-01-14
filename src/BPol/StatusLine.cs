@@ -16,7 +16,12 @@ internal sealed class StatusLine
     /// <summary>
     /// Gets a value indicating whether the status line is empty.
     /// </summary>
-    public bool IsEmpty => this.events.Count == 0;
+    public bool IsEmpty => this.Count == 0;
+
+    /// <summary>
+    /// Gets the number of events in the status line.
+    /// </summary>
+    public int Count => this.events.Count;
 
     /// <summary>
     /// Gets the event at the specified index.

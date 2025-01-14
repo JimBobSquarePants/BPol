@@ -19,25 +19,79 @@ public class SweepEvent
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SweepEvent"/> class.
+    /// Default constructor.
     /// </summary>
-    /// <param name="point">The point.</param>
-    /// <param name="left">Whether the point is the left (source) endpoint of the segment.</param>
-    /// <param name="contourId">The ID of the contour to which the event belongs.</param>
-    /// <param name="polygonType">The polygon type.</param>
-    /// <param name="edgeType">The edge type.</param>
+    public SweepEvent() => this.Id = Interlocked.Increment(ref nextId); // Ensure thread safety if needed
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SweepEvent"/> class.
+    /// </summary>
+    /// <param name="point">The point associated with the event.</param>
+    /// <param name="left">Whether the point is the left endpoint of the segment.</param>
+    /// <param name="otherEvent">The event associated with the other endpoint of the segment.</param>
+    /// <param name="polygonType">The polygon type to which the segment belongs.</param>
+    /// <param name="edgeType">The type of the edge. Default is <see cref="EdgeType.NORMAL"/>.</param>
     public SweepEvent(
         Vector2 point,
         bool left,
-        int contourId,
-        PolygonType polygonType = PolygonType.SUBJECT,
+        SweepEvent otherEvent,
+        PolygonType polygonType,
         EdgeType edgeType = EdgeType.NORMAL)
     {
         this.Point = point;
         this.Left = left;
-        this.ContourId = contourId;
-        this.Polygon = polygonType;
+        this.OtherEvent = otherEvent;
+        this.PolygonType = polygonType;
         this.EdgeType = edgeType;
-        this.Id = Interlocked.Increment(ref nextId); // Ensure thread safety if needed
+        this.Id = Interlocked.Increment(ref nextId);
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SweepEvent"/> class.
+    /// </summary>
+    /// <param name="point">The point associated with the event.</param>
+    /// <param name="left">Whether the point is the left endpoint of the segment.</param>
+    /// <param name="otherEvent">The event associated with the other endpoint of the segment.</param>
+    /// <param name="polygonType">The polygon type to which the segment belongs.</param>
+    public SweepEvent(Vector2 point, bool left, SweepEvent otherEvent, PolygonType polygonType)
+    {
+        this.Point = point;
+        this.Left = left;
+        this.OtherEvent = otherEvent;
+        this.PolygonType = polygonType;
+        this.EdgeType = EdgeType.NORMAL;
+        this.Id = Interlocked.Increment(ref nextId);
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SweepEvent"/> class.
+    /// </summary>
+    /// <param name="point">The point associated with the event.</param>
+    /// <param name="left">Whether the point is the left endpoint of the segment.</param>
+    /// <param name="polygonType">The polygon type to which the segment belongs.</param>
+    public SweepEvent(Vector2 point, bool left, PolygonType polygonType)
+    {
+        this.Point = point;
+        this.Left = left;
+        this.PolygonType = polygonType;
+        this.EdgeType = EdgeType.NORMAL;
+        this.Id = Interlocked.Increment(ref nextId);
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SweepEvent"/> class.
+    /// </summary>
+    /// <param name="point">The point associated with the event.</param>
+    /// <param name="left">Whether the point is the left endpoint of the segment.</param>
+    /// <param name="contourId">The ID of the contour to which the event belongs.</param>
+    public SweepEvent(Vector2 point, bool left, int contourId)
+    {
+        this.Point = point;
+        this.Left = left;
+        this.ContourId = contourId;
+        this.PolygonType = PolygonType.SUBJECT;
+        this.EdgeType = EdgeType.NORMAL;
+        this.Id = Interlocked.Increment(ref nextId);
     }
 
     /// <summary>
@@ -52,19 +106,19 @@ public class SweepEvent
     public bool Left { get; set; }
 
     /// <summary>
-    /// Gets the ID of the contour to which the event belongs.
+    /// Gets or sets the ID of the contour to which the event belongs.
     /// </summary>
-    public int ContourId { get; }
+    public int ContourId { get; set; }
 
     /// <summary>
     /// Gets index of the polygon to which the associated segment belongs to;
     /// </summary>
-    public PolygonType Polygon { get; }
+    public PolygonType PolygonType { get; }
 
     /// <summary>
-    /// Gets the type of the edge.
+    /// Gets or sets the type of the edge.
     /// </summary>
-    public EdgeType EdgeType { get; }
+    public EdgeType EdgeType { get; set; }
 
     /// <summary>
     /// Gets a unique id for each event.
@@ -84,17 +138,37 @@ public class SweepEvent
     public bool InOut { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the inOut transition for the segment from
+    /// the other polygon preceding this segment in the sweep line.
+    /// </summary>
+    public bool OtherInOut { get; set; }
+
+    /// <summary>
     /// Gets or sets the sorted sweep events. Only used in "left" events.
     /// Position of the event (segment) in SL (status line).
     /// </summary>
     public int PosSL { get; set; }
 
     /// <summary>
-    /// Returns the segment associated with the sweep event.
+    /// Gets or sets the previous segment in the sweep line  belonging to the result of the
+    /// boolean operation.
     /// </summary>
-    /// <returns>The <see cref="Segment"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Segment Segment() => new(this.Point, this.OtherEvent.Point);
+    public SweepEvent PrevInResult { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the event is in the result.
+    /// </summary>
+    public bool InResult { get; set; }
+
+    /// <summary>
+    /// Gets or sets the position of the event in the sorted events.
+    /// </summary>
+    public int Pos { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the event is a result in-out transition.
+    /// </summary>
+    public bool ResultInOut { get; set; }
 
     /// <summary>
     /// Is the line segment (point, otherEvent->point) below point p.
@@ -118,4 +192,20 @@ public class SweepEvent
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Above(Vector2 p) => !this.Below(p);
+
+    /// <summary>
+    /// Is the line segment (point, otherEvent->point) a vertical line segment.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> if the line segment is vertical; otherwise <see langword="false"/>.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Vertical() => this.Point.X == this.OtherEvent.Point.X;
+
+    /// <summary>
+    /// Returns the segment associated with the sweep event.
+    /// </summary>
+    /// <returns>The <see cref="Segment"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Segment Segment() => new(this.Point, this.OtherEvent.Point);
 }
