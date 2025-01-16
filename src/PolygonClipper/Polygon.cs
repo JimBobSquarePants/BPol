@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Represents a complex polygon.

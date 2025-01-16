@@ -5,7 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Compares two <see cref="SweepEvent"/> instances for sorting in the event queue.

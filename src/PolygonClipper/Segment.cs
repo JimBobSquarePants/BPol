@@ -5,7 +5,7 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Represents a line segment on a plane.

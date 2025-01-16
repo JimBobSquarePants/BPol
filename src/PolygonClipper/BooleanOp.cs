@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Implements a robust algorithm for performing boolean operations on polygons.

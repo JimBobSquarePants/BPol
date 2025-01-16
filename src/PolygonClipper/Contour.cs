@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Represents a simple polygon. The edges of the contours are interior disjoint.

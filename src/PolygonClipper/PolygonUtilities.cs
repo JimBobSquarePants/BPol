@@ -5,7 +5,7 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace BPol;
+namespace PolygonClipper;
 
 internal static class PolygonUtilities
 {

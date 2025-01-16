@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Represents a sweep.

@@ -5,7 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Allows the comparison of segments for sorting.

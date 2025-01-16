@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Specifies the type of an edge in a boolean operation on polygons.

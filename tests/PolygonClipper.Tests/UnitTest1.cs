@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace BPol.Tests
+namespace PolygonClipper.Tests
 {
     public class UnitTest1
     {

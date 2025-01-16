@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace BPol;
+namespace PolygonClipper;
 
 /// <summary>
 /// Represents a status line for the sweep line algorithm, maintaining a sorted collection of sweep events.
