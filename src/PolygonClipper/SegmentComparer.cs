@@ -10,7 +10,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Allows the comparison of segments for sorting.
 /// </summary>
-public sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
+internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
 {
     private readonly SweepEventComparer eventComparer = new();
 
@@ -42,24 +42,26 @@ public sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
                 return x.Point.Y < y.Point.Y ? -1 : 1;
             }
 
+            // Has the line segment associated to "x" been inserted into the segment after the line
+            // segment associated to "y"?
             // Use the sweep event order to determine the comparison
             int compResult = this.eventComparer.Compare(x, y);
-            if (compResult < 0)
+            if (compResult == 1)
             {
                 return y.Above(x.Point) ? 1 : -1;
             }
 
-            // The line segment associated with le2 has been inserted after le1
-            return x.Below(y.Point) ? -1 : 1;
+            // The line segment associated with "y" has been inserted after "x"
+            return x.Below(y.Point) ? 1 : -1;
         }
 
         // Segments are collinear
-        if (x.ContourId != y.ContourId)
+        if (x.PolygonType != y.PolygonType)
         {
-            return x.ContourId.CompareTo(y.ContourId);
+            return x.PolygonType < y.PolygonType ? -1 : 1;
         }
 
-        // Use a consistent ordering criterion for collinear segments with the same contour ID
+        // Use a consistent ordering criterion for collinear segments with the same id.
         if (x.Point == y.Point)
         {
             return x.Id.CompareTo(y.Id);

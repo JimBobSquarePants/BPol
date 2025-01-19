@@ -1,4 +1,4 @@
-// Copyright (c) Six Labors.
+﻿// Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
 using System;
@@ -27,7 +27,7 @@ namespace PolygonClipper;
 /// <item><description>Connecting edges: Constructs the resulting polygon by connecting valid segments.</description></item>
 /// </list>
 /// </remarks>
-public class BooleanOp
+public class PolygonClipper
 {
     private readonly Polygon subject;
     private readonly Polygon clipping;
@@ -60,13 +60,13 @@ public class BooleanOp
     private readonly List<SweepEvent> sortedEvents;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="BooleanOp"/> class.
+    /// Initializes a new instance of the <see cref="PolygonClipper"/> class.
     /// </summary>
     /// <param name="subject">The subject polygon.</param>
     /// <param name="clip">The clipping polygon.</param>
     /// <param name="result">The result polygon.</param>
     /// <param name="opType">The operation type.</param>
-    public BooleanOp(Polygon subject, Polygon clip, Polygon result, BooleanOpType opType)
+    public PolygonClipper(Polygon subject, Polygon clip, Polygon result, BooleanOpType opType)
     {
         this.subject = subject;
         this.clipping = clip;
@@ -245,7 +245,7 @@ public class BooleanOp
     /// </summary>
     /// <param name="s">The segment to process.</param>
     /// <param name="pt">The polygon type to which the segment belongs.</param>
-    public void ProcessSegment(Segment s, PolygonType pt)
+    private void ProcessSegment(Segment s, PolygonType pt)
     {
         // Create sweep events for the endpoints of the segment
         SweepEvent e1 = this.StoreSweepEvent(new SweepEvent(s.Source, true, pt));
@@ -345,7 +345,7 @@ public class BooleanOp
     /// <exception cref="InvalidOperationException">
     /// Thrown when the line segments overlap but belong to the same polygon.
     /// </exception>
-    public int PossibleIntersection(SweepEvent le1, SweepEvent le2)
+    private int PossibleIntersection(SweepEvent le1, SweepEvent le2)
     {
         // Point intersections
         int nIntersections = PolygonUtilities.FindIntersection(le1.Segment(), le2.Segment(), out Vector2 ip1, out Vector2 ip2);
@@ -462,7 +462,7 @@ public class BooleanOp
     /// </summary>
     /// <param name="le">The left event representing the segment to divide.</param>
     /// <param name="p">The point at which to divide the segment.</param>
-    public void DivideSegment(SweepEvent le, Vector2 p)
+    private void DivideSegment(SweepEvent le, Vector2 p)
     {
         // Create the right event for the left segment (result of division)
         SweepEvent r = this.StoreSweepEvent(new SweepEvent(p, false, le, le.PolygonType));

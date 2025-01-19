@@ -95,7 +95,7 @@ internal static class PolygonUtilities
         Vector2 p1 = seg1.Source;
         Vector2 d1 = seg1.Target - p1;
 
-        const float sqrEpsilon = 0.0000001f; // Threshold for floating-point precision
+        const float sqrEpsilon = 0.00001F; // Threshold for floating-point precision
         Vector2 e = p1 - p0;
         float kross = (d0.X * d1.Y) - (d0.Y * d1.X);
         float sqrKross = kross * kross;
@@ -164,7 +164,7 @@ internal static class PolygonUtilities
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SnapToSegmentEndpoint(ref Vector2 point, Segment segment)
     {
-        const float threshold = 0.00001f;
+        const float threshold = 0.00001F;
 
         if (Vector2.Distance(point, segment.Source) < threshold)
         {

@@ -10,7 +10,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Compares two <see cref="SweepEvent"/> instances for sorting in the event queue.
 /// </summary>
-internal class SweepEventComparer : IComparer<SweepEvent>, IComparer
+internal sealed class SweepEventComparer : IComparer<SweepEvent>, IComparer
 {
     /// <inheritdoc/>
     public int Compare(SweepEvent x, SweepEvent y)
@@ -55,8 +55,8 @@ internal class SweepEventComparer : IComparer<SweepEvent>, IComparer
             return x.Above(y.OtherEvent.Point) ? 1 : -1;
         }
 
-        // Compare by polygon ID (higher ID is processed first)
-        return x.ContourId.CompareTo(y.ContourId);
+        // Compare by polygon type (pol), higher value is processed first
+        return x.PolygonType > y.PolygonType ? 1 : -1;
     }
 
     /// <inheritdoc/>
