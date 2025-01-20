@@ -66,8 +66,8 @@ public sealed class Contour
     /// <param name="p">The index of the segment.</param>
     /// <returns>The <see cref="Segment"/>.</returns>
     public Segment Segment(int p)
-        => (p == this.NVertices)
-        ? new Segment(this.points[0], this.points[^1])
+        => (p == this.NVertices - 1)
+        ? new Segment(this.points[^1], this.points[0])
         : new Segment(this.points[p], this.points[p + 1]);
 
     /// <summary>

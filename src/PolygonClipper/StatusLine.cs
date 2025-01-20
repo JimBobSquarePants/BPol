@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
 
@@ -14,21 +15,24 @@ internal sealed class StatusLine
     private readonly SegmentComparer comparer = new();
 
     /// <summary>
-    /// Gets a value indicating whether the status line is empty.
-    /// </summary>
-    public bool IsEmpty => this.Count == 0;
-
-    /// <summary>
     /// Gets the number of events in the status line.
     /// </summary>
-    public int Count => this.events.Count;
+    public int Count
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.events.Count;
+    }
 
     /// <summary>
     /// Gets the event at the specified index.
     /// </summary>
     /// <param name="index">The index of the event.</param>
     /// <returns>The sweep event at the given index.</returns>
-    public SweepEvent this[int index] => this.events[index];
+    public SweepEvent this[int index]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.events[index];
+    }
 
     /// <summary>
     /// Inserts a sweep event into the status line, maintaining sorted order.
@@ -54,5 +58,6 @@ internal sealed class StatusLine
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown if <paramref name="index"/> is less than 0 or greater than or equal to the number of events.
     /// </exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RemoveAt(int index) => this.events.RemoveAt(index);
 }

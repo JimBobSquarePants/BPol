@@ -27,10 +27,11 @@ internal static class PolygonUtilities
     /// <param name="u1">The end of the first interval.</param>
     /// <param name="v0">The start of the second interval.</param>
     /// <param name="v1">The end of the second interval.</param>
-    /// <param name="w">
-    /// An array to store the result of the intersection.
-    /// - If the intersection is a single point, the first element of the array will contain the intersection point.
-    /// - If the intersection is an interval, the first two elements will contain the start and end of the intersection range.
+    /// <param name="start">
+    /// The start of the intersection interval, or the single intersection point if there is only one.
+    /// </param>
+    /// <param name="end">
+    /// The end of the intersection interval. If the intersection is a single point, this value is undefined.
     /// </param>
     /// <returns>
     /// An <see cref="int"/> indicating the type of intersection:
@@ -38,8 +39,11 @@ internal static class PolygonUtilities
     /// - Returns 1 if the intersection is a single point.
     /// - Returns 2 if the intersection is an interval.
     /// </returns>
-    public static int FindIntersection(float u0, float u1, float v0, float v1, Span<float> w)
+    public static int FindIntersection(float u0, float u1, float v0, float v1, out float start, out float end)
     {
+        start = 0;
+        end = 0;
+
         if ((u1 < v0) || (u0 > v1))
         {
             return 0; // No intersection
@@ -50,19 +54,19 @@ internal static class PolygonUtilities
             if (u0 < v1)
             {
                 // There is an overlapping range
-                w[0] = (u0 < v0) ? v0 : u0;
-                w[1] = (u1 > v1) ? v1 : u1;
+                start = (u0 < v0) ? v0 : u0;
+                end = (u1 > v1) ? v1 : u1;
                 return 2; // Two endpoints defining the intersection range
             }
 
             // u0 == v1
-            w[0] = u0;
+            start = u0;
 
             return 1; // Single point intersection
         }
 
         // u1 == v0
-        w[0] = u1;
+        start = u1;
 
         return 1; // Single point intersection
     }
@@ -99,8 +103,8 @@ internal static class PolygonUtilities
         Vector2 e = p1 - p0;
         float kross = (d0.X * d1.Y) - (d0.Y * d1.X);
         float sqrKross = kross * kross;
-        float sqrLen0 = (d0.X * d0.X) + (d0.Y * d0.Y);
-        float sqrLen1 = (d1.X * d1.X) + (d1.Y * d1.Y);
+        float sqrLen0 = Vector2.Dot(d0, d0);
+        float sqrLen1 = Vector2.Dot(d1, d1);
 
         if (sqrKross > sqrEpsilon * sqrLen0 * sqrLen1)
         {
@@ -135,21 +139,20 @@ internal static class PolygonUtilities
         }
 
         // Lines of the segments are the same. Need to test for overlap of segments.
-        float s0 = ((d0.X * e.X) + (d0.Y * e.Y)) / sqrLen0; // so = Dot (D0, E) * sqrLen0
-        float s1 = s0 + (((d0.X * d1.X) + (d0.Y * d1.Y)) / sqrLen0); // s1 = s0 + Dot (D0, D1) * sqrLen0
+        float s0 = Vector2.Dot(d0, e) / sqrLen0; // so = Dot (D0, E) * sqrLen0
+        float s1 = s0 + (Vector2.Dot(d0, d1) / sqrLen0); // s1 = s0 + Dot (D0, D1) * sqrLen0
         float smin = Math.Min(s0, s1);
         float smax = Math.Max(s0, s1);
-        Span<float> w = stackalloc float[2];
-        int imax = FindIntersection(0.0f, 1.0f, smin, smax, w);
+        int imax = FindIntersection(0F, 1F, smin, smax, out float w0, out float w1);
 
         if (imax > 0)
         {
-            pi0 = new Vector2(p0.X + (w[0] * d0.X), p0.Y + (w[0] * d0.Y));
+            pi0 = new Vector2(p0.X + (w0 * d0.X), p0.Y + (w0 * d0.Y));
             SnapToSegmentEndpoint(ref pi0, seg0);
             SnapToSegmentEndpoint(ref pi0, seg1);
             if (imax > 1)
             {
-                pi1 = new Vector2(p0.X + (w[1] * d0.X), p0.Y + (w[1] * d0.Y));
+                pi1 = new Vector2(p0.X + (w1 * d0.X), p0.Y + (w1 * d0.Y));
             }
         }
 

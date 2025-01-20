@@ -48,11 +48,11 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             int compResult = this.eventComparer.Compare(x, y);
             if (compResult == 1)
             {
-                return y.Above(x.Point) ? 1 : -1;
+                return y.Above(x.Point) ? -1 : 1;
             }
 
             // The line segment associated with "y" has been inserted after "x"
-            return x.Below(y.Point) ? 1 : -1;
+            return x.Below(y.Point) ? -1 : 1;
         }
 
         // Segments are collinear

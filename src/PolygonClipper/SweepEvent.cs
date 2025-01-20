@@ -10,7 +10,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Represents a sweep.
 /// </summary>
-internal class SweepEvent
+internal sealed class SweepEvent
 {
     /// <summary>
     /// <para>

@@ -58,12 +58,12 @@ public sealed class Polygon
         int size = this.NContours;
         for (int i = 0; i < pol.NContours; ++i)
         {
-            this.PushBack(pol.Contour(i));
-            this.Back().ClearHoles();
+            this.Push(pol.Contour(i));
+            this.Last().ClearHoles();
 
             for (int j = 0; j < pol.Contour(i).NHoles; ++j)
             {
-                this.Back().AddHole(pol.Contour(i).Hole(j) + size);
+                this.Last().AddHole(pol.Contour(i).Hole(j) + size);
             }
         }
     }
@@ -114,18 +114,18 @@ public sealed class Polygon
     /// Adds the contour the end of the collection.
     /// </summary>
     /// <param name="contour">The contour to add.</param>
-    public void PushBack(Contour contour) => this.contours.Add(contour);
+    public void Push(Contour contour) => this.contours.Add(contour);
 
     /// <summary>
     /// Returns the last contour in the polygon.
     /// </summary>
     /// <returns>The <see cref="Contour"/>.</returns>
-    public Contour Back() => this.contours[^1];
+    public Contour Last() => this.contours[^1];
 
     /// <summary>
     /// Removes the contour at the end of the collection.
     /// </summary>
-    public void PopBack() => this.contours.RemoveAt(this.contours.Count - 1);
+    public void Pop() => this.contours.RemoveAt(this.contours.Count - 1);
 
     /// <summary>
     /// Clears the contours.

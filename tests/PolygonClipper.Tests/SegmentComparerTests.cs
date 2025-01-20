@@ -54,17 +54,8 @@ public class SegmentComparerTests
         Assert.False(se2.Below(se1.Point));
         Assert.True(se2.Above(se1.Point));
 
-        // This assertion has been updated to align with the C++ reference.
-        // The original JavaScript implementation of compareSegments uses a different
-        // sorting order than the C++ implementation. Specifically, the JavaScript
-        // function treats certain comparisons as inverted relative to the C++ logic.
-        // After analyzing the C++ SegmentComp implementation and comparing it to
-        // the JavaScript code, we determined that the C++ comparator defines the
-        // opposite order for certain cases. As a result, the expected result for
-        // segmentComparer.Compare(se1, se2) in this test has been changed from -1 
-        // (as seen in JavaScript) to 1 to reflect the C++ behavior accurately.
-        Assert.Equal(1, this.segmentComparer.Compare(se1, se2));
-        Assert.Equal(-1, this.segmentComparer.Compare(se2, se1));
+        Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
+        Assert.Equal(1, this.segmentComparer.Compare(se2, se1));
 
         Assert.Equal(1, eventComparer.Compare(se3, se4));
         Assert.False(se4.Above(se3.Point));
@@ -78,9 +69,7 @@ public class SegmentComparerTests
 
         Assert.False(se1.Below(se2.Point));
 
-        // According to the C++ implementation, se1 should be ordered before se2,
-        // which translates to -1 in the C# comparer.
-        Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
+        Assert.Equal(1, this.segmentComparer.Compare(se1, se2));
     }
 
     [Fact]
@@ -91,9 +80,6 @@ public class SegmentComparerTests
 
         // Assert that the segments belong to different polygons
         Assert.NotEqual(se1.PolygonType, se2.PolygonType);
-
-        // The C++ implementation orders the subject polygon before the clipping polygon,
-        // which translates to -1 in the C# comparer.
         Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
     }
 
@@ -114,8 +100,11 @@ public class SegmentComparerTests
 
         // Assert that the segments share the same starting point
         Assert.Equal(se1.Point, se2.Point);
+        Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
 
-        // Compare by unique IDs generated during SweepEvent construction.
+        // Recreate our items swapping the order and compare again; the order should now be reversed.
+        //
+        // We compare by unique IDs generated during SweepEvent construction.
         // This differs from the JavaScript version, which uses contourId for comparison, 
         // and from the C++ version, which relies on pointer comparison to determine 
         // a consistent ordering for collinear segments. 
@@ -128,11 +117,21 @@ public class SegmentComparerTests
         // This behavior is consistent with the use of unique IDs to establish a deterministic and 
         // consistent order for collinear segments, which may vary based on the sequence in which the
         // instances are created.
-        Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
-
-        // Recreate our items swapping the order and compare again; the order should now be reversed.
         se2 = new(pt, true, new SweepEvent(new Vector2(3, 1), false));
         se1 = new(pt, true, new SweepEvent(new Vector2(5, 1), false));
         Assert.Equal(1, this.segmentComparer.Compare(se1, se2));
+    }
+
+    [Fact]
+    public void CollinearSamePolygonDifferentLeftPoints()
+    {
+        SweepEvent se1 = new(new Vector2(1, 1), true, new SweepEvent(new Vector2(5, 1), false), PolygonType.SUBJECT);
+        SweepEvent se2 = new(new Vector2(2, 1), true, new SweepEvent(new Vector2(3, 1), false), PolygonType.SUBJECT);
+
+        Assert.Equal(se1.PolygonType, se2.PolygonType);
+        Assert.NotEqual(se1.Point, se2.Point);
+
+        Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
+        Assert.Equal(1, this.segmentComparer.Compare(se2, se1));
     }
 }
