@@ -47,13 +47,13 @@ internal sealed class SweepEvent
     /// <param name="left">Whether the point is the left endpoint of the segment.</param>
     /// <param name="otherEvent">The event associated with the other endpoint of the segment.</param>
     /// <param name="polygonType">The polygon type to which the segment belongs.</param>
-    /// <param name="edgeType">The type of the edge. Default is <see cref="EdgeType.NORMAL"/>.</param>
+    /// <param name="edgeType">The type of the edge. Default is <see cref="EdgeType.Normal"/>.</param>
     public SweepEvent(
         Vector2 point,
         bool left,
         SweepEvent otherEvent,
         PolygonType polygonType = PolygonType.SUBJECT,
-        EdgeType edgeType = EdgeType.NORMAL)
+        EdgeType edgeType = EdgeType.Normal)
     {
         this.Point = point;
         this.Left = left;
@@ -74,7 +74,7 @@ internal sealed class SweepEvent
         this.Point = point;
         this.Left = left;
         this.PolygonType = polygonType;
-        this.EdgeType = EdgeType.NORMAL;
+        this.EdgeType = EdgeType.Normal;
         this.Id = nextId++;
     }
 
@@ -90,7 +90,7 @@ internal sealed class SweepEvent
         this.Left = left;
         this.ContourId = contourId;
         this.PolygonType = PolygonType.SUBJECT;
-        this.EdgeType = EdgeType.NORMAL;
+        this.EdgeType = EdgeType.Normal;
         this.Id = nextId++;
     }
 

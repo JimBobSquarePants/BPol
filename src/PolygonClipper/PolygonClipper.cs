@@ -32,7 +32,7 @@ public class PolygonClipper
     private readonly Polygon subject;
     private readonly Polygon clipping;
     private Polygon result;
-    private readonly BooleanOpType operation;
+    private readonly BooleanOperation operation;
 
     /// <summary>
     /// The event queue (sorted events to be processed)
@@ -65,13 +65,13 @@ public class PolygonClipper
     /// <param name="subject">The subject polygon.</param>
     /// <param name="clip">The clipping polygon.</param>
     /// <param name="result">The result polygon.</param>
-    /// <param name="opType">The operation type.</param>
-    public PolygonClipper(Polygon subject, Polygon clip, Polygon result, BooleanOpType opType)
+    /// <param name="operation">The operation type.</param>
+    public PolygonClipper(Polygon subject, Polygon clip, Polygon result, BooleanOperation operation)
     {
         this.subject = subject;
         this.clipping = clip;
         this.result = result;
-        this.operation = opType;
+        this.operation = operation;
         this.sweepEventComparer = new SweepEventComparer();
         this.eventQueue = new PriorityQueue<SweepEvent, SweepEvent>(this.sweepEventComparer);
         this.statusLine = new();
@@ -88,7 +88,7 @@ public class PolygonClipper
     public static Polygon Intersection(Polygon subject, Polygon clip)
     {
         Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOpType.INTERSECTION);
+        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Intersection);
         clipper.Run();
         return result;
     }
@@ -102,7 +102,7 @@ public class PolygonClipper
     public static Polygon Union(Polygon subject, Polygon clip)
     {
         Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOpType.UNION);
+        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Union);
         clipper.Run();
         return result;
     }
@@ -117,7 +117,7 @@ public class PolygonClipper
     public static Polygon Difference(Polygon subject, Polygon clip)
     {
         Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOpType.DIFFERENCE);
+        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Difference);
         clipper.Run();
         return result;
     }
@@ -132,7 +132,7 @@ public class PolygonClipper
     public static Polygon Xor(Polygon subject, Polygon clip)
     {
         Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOpType.XOR);
+        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Xor);
         clipper.Run();
         return result;
     }
@@ -145,7 +145,6 @@ public class PolygonClipper
         // Compute bounding boxes for optimization steps 1 and 2
         Box2 subjectBB = this.subject.BBox();
         Box2 clippingBB = this.clipping.BBox();
-        float minMaxX = MathF.Min(subjectBB.XMax, clippingBB.XMax);
 
         // Check for trivial cases that can be resolved without sweeping
         if (this.TrivialOperation(subjectBB, clippingBB))
@@ -175,13 +174,14 @@ public class PolygonClipper
 
         // Sweep line algorithm: process events in the priority queue
         StatusLine line = this.statusLine;
+        float minMaxX = MathF.Min(subjectBB.XMax, clippingBB.XMax);
         while (this.eventQueue.Count > 0)
         {
             SweepEvent se = this.eventQueue.Dequeue();
 
             // Optimization: skip further processing if intersection is impossible
-            if ((this.operation == BooleanOpType.INTERSECTION && se.Point.X > minMaxX) ||
-                (this.operation == BooleanOpType.DIFFERENCE && se.Point.X > subjectBB.XMax))
+            if ((this.operation == BooleanOperation.Intersection && se.Point.X > minMaxX) ||
+                (this.operation == BooleanOperation.Difference && se.Point.X > subjectBB.XMax))
             {
                 this.ConnectEdges();
                 return;
@@ -268,12 +268,12 @@ public class PolygonClipper
         // Test 1 for trivial result case.
         if (this.subject.NContours * this.clipping.NContours == 0)
         {
-            if (this.operation == BooleanOpType.DIFFERENCE)
+            if (this.operation == BooleanOperation.Difference)
             {
                 this.result = this.subject;
             }
 
-            if (this.operation is BooleanOpType.UNION or BooleanOpType.XOR)
+            if (this.operation is BooleanOperation.Union or BooleanOperation.Xor)
             {
                 this.result = this.subject.NContours == 0 ? this.clipping : this.subject;
             }
@@ -286,12 +286,12 @@ public class PolygonClipper
             subjectBB.YMin > clippingBB.YMax || clippingBB.YMin > subjectBB.YMax)
         {
             // The bounding boxes do not overlap
-            if (this.operation == BooleanOpType.DIFFERENCE)
+            if (this.operation == BooleanOperation.Difference)
             {
                 this.result = this.subject;
             }
 
-            if (this.operation is BooleanOpType.UNION or BooleanOpType.XOR)
+            if (this.operation is BooleanOperation.Union or BooleanOperation.Xor)
             {
                 this.result = this.subject;
                 this.result.Join(this.clipping);
@@ -395,18 +395,18 @@ public class PolygonClipper
     private bool InResult(SweepEvent le)
         => le.EdgeType switch
         {
-            EdgeType.NORMAL => this.operation switch
+            EdgeType.Normal => this.operation switch
             {
-                BooleanOpType.INTERSECTION => !le.OtherInOut,
-                BooleanOpType.UNION => le.OtherInOut,
-                BooleanOpType.DIFFERENCE => (le.OtherInOut && le.PolygonType == PolygonType.SUBJECT) ||
+                BooleanOperation.Intersection => !le.OtherInOut,
+                BooleanOperation.Union => le.OtherInOut,
+                BooleanOperation.Difference => (le.OtherInOut && le.PolygonType == PolygonType.SUBJECT) ||
                                             (!le.OtherInOut && le.PolygonType == PolygonType.CLIPPING),
-                BooleanOpType.XOR => true,
+                BooleanOperation.Xor => true,
                 _ => false,
             },
-            EdgeType.NON_CONTRIBUTING => false,
-            EdgeType.SAME_TRANSITION => this.operation is BooleanOpType.INTERSECTION or BooleanOpType.UNION,
-            EdgeType.DIFFERENT_TRANSITION => this.operation == BooleanOpType.DIFFERENCE,
+            EdgeType.NonContributing => false,
+            EdgeType.SameTransition => this.operation is BooleanOperation.Intersection or BooleanOperation.Union,
+            EdgeType.DifferentTransition => this.operation == BooleanOperation.Difference,
             _ => false,
         };
 
@@ -451,13 +451,7 @@ public class PolygonClipper
 
         if (nIntersections == 2 && le1.PolygonType == le2.PolygonType)
         {
-            // TODO: Check this. The 2013 paper says self intersecting polygons are allowed.
-            // Original code:
-            // std::cerr << "Sorry, edges of the same polygon overlap\n";
-            // exit(1); // the line segments overlap, but they belong to the same polygon
-
             // Line segments overlap but belong to the same polygon
-            // throw new InvalidOperationException("Edges of the same polygon cannot overlap.");
             return 0;
         }
 
@@ -514,8 +508,8 @@ public class PolygonClipper
         if (sortedEvents.Count == 2 || (sortedEvents.Count == 3 && sortedEvents[2] != null))
         {
             // Both line segments are equal or share the left endpoint
-            le1.EdgeType = EdgeType.NON_CONTRIBUTING;
-            le2.EdgeType = (le1.InOut == le2.InOut) ? EdgeType.SAME_TRANSITION : EdgeType.DIFFERENT_TRANSITION;
+            le1.EdgeType = EdgeType.NonContributing;
+            le2.EdgeType = (le1.InOut == le2.InOut) ? EdgeType.SameTransition : EdgeType.DifferentTransition;
             if (sortedEvents.Count == 3)
             {
                 this.DivideSegment(sortedEvents[2].OtherEvent, sortedEvents[1].Point);
