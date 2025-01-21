@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
 
@@ -45,11 +44,6 @@ public class PolygonClipper
     private readonly StatusLine statusLine;
 
     /// <summary>
-    /// The event holder (temporary storage for events)
-    /// </summary>
-    private readonly List<SweepEvent> eventHolder;
-
-    /// <summary>
     /// To compare events.
     /// </summary>
     private readonly SweepEventComparer sweepEventComparer;
@@ -75,7 +69,6 @@ public class PolygonClipper
         this.sweepEventComparer = new SweepEventComparer();
         this.eventQueue = new PriorityQueue<SweepEvent, SweepEvent>(this.sweepEventComparer);
         this.statusLine = new();
-        this.eventHolder = new List<SweepEvent>();
         this.sortedEvents = new List<SweepEvent>();
     }
 
@@ -153,12 +146,14 @@ public class PolygonClipper
         }
 
         // Process all segments in the subject polygon
+        int contourId = 0;
         for (int i = 0; i < this.subject.NContours; i++)
         {
             Contour contour = this.subject.Contour(i);
+            contourId++;
             for (int j = 0; j < contour.NVertices; j++)
             {
-                this.ProcessSegment(contour.Segment(j), PolygonType.SUBJECT);
+                this.ProcessSegment(contourId, contour.Segment(j), PolygonType.SUBJECT);
             }
         }
 
@@ -166,18 +161,26 @@ public class PolygonClipper
         for (int i = 0; i < this.clipping.NContours; i++)
         {
             Contour contour = this.clipping.Contour(i);
+            contourId++;
             for (int j = 0; j < contour.NVertices; j++)
             {
-                this.ProcessSegment(contour.Segment(j), PolygonType.CLIPPING);
+                this.ProcessSegment(contourId, contour.Segment(j), PolygonType.CLIPPING);
             }
         }
 
         // Sweep line algorithm: process events in the priority queue
+        int added = 0;
         StatusLine line = this.statusLine;
         float minMaxX = MathF.Min(subjectBB.XMax, clippingBB.XMax);
         while (this.eventQueue.Count > 0)
         {
             SweepEvent se = this.eventQueue.Dequeue();
+            added++;
+
+            if (added is 2 or 4 or 9 or 20 or 24)
+            {
+                Debug.WriteLine("Event Added: " + se.Point);
+            }
 
             // Optimization: skip further processing if intersection is impossible
             if ((this.operation == BooleanOperation.Intersection && se.Point.X > minMaxX) ||
@@ -306,9 +309,10 @@ public class PolygonClipper
     /// <summary>
     /// Processes a segment by generating sweep events for its endpoints and adding them to the event queue.
     /// </summary>
+    /// <param name="contourId">The identifier of the contour to which the segment belongs.</param>
     /// <param name="s">The segment to process.</param>
     /// <param name="pt">The polygon type to which the segment belongs.</param>
-    private void ProcessSegment(Segment s, PolygonType pt)
+    private void ProcessSegment(int contourId, Segment s, PolygonType pt)
     {
         if (s.Source == s.Target)
         {
@@ -317,9 +321,10 @@ public class PolygonClipper
         }
 
         // Create sweep events for the endpoints of the segment
-        SweepEvent e1 = this.StoreSweepEvent(new SweepEvent(s.Source, true, pt));
-        SweepEvent e2 = this.StoreSweepEvent(new SweepEvent(s.Target, true, e1, pt));
+        SweepEvent e1 = new(s.Source, true, pt);
+        SweepEvent e2 = new(s.Target, true, e1, pt);
         e1.OtherEvent = e2;
+        e1.ContourId = e2.ContourId = contourId;
 
         // Determine which endpoint is the left endpoint
         if (s.Min == s.Source)
@@ -434,7 +439,7 @@ public class PolygonClipper
             le1.Segment(),
             le2.Segment(),
             out Vector2 ip1,
-            out Vector2 ip2);
+            out Vector2 _); // Currently unused but could be used to detect collinear overlapping segments
 
         if (nIntersections == 0)
         {
@@ -547,10 +552,10 @@ public class PolygonClipper
     private void DivideSegment(SweepEvent le, Vector2 p)
     {
         // Create the right event for the left segment (result of division)
-        SweepEvent r = this.StoreSweepEvent(new SweepEvent(p, false, le, le.PolygonType));
+        SweepEvent r = new(p, false, le, le.PolygonType);
 
         // Create the left event for the right segment (result of division)
-        SweepEvent l = this.StoreSweepEvent(new SweepEvent(p, true, le.OtherEvent, le.PolygonType));
+        SweepEvent l = new(p, true, le.OtherEvent, le.PolygonType);
 
         // Avoid rounding error: ensure the left event is processed before the right event
         if (this.sweepEventComparer.Compare(l, le.OtherEvent) > 0)
@@ -732,17 +737,5 @@ public class PolygonClipper
         }
 
         return newPos;
-    }
-
-    /// <summary>
-    /// Stores a new sweep event in the event holder and returns the stored instance.
-    /// </summary>
-    /// <param name="e">The sweep event to store.</param>
-    /// <returns>The stored sweep event instance.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private SweepEvent StoreSweepEvent(SweepEvent e)
-    {
-        this.eventHolder.Add(e);
-        return e;
     }
 }

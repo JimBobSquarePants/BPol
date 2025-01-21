@@ -64,7 +64,7 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
         // Use a consistent ordering criterion for collinear segments with the same id.
         if (x.Point == y.Point)
         {
-            return x.Id.CompareTo(y.Id);
+            return x.ContourId > y.ContourId ? 1 : -1;
         }
 
         // Fall back to the sweep event comparator for final comparison

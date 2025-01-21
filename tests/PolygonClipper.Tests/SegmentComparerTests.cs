@@ -102,23 +102,9 @@ public class SegmentComparerTests
         Assert.Equal(se1.Point, se2.Point);
         Assert.Equal(-1, this.segmentComparer.Compare(se1, se2));
 
-        // Recreate our items swapping the order and compare again; the order should now be reversed.
-        //
-        // We compare by unique IDs generated during SweepEvent construction.
-        // This differs from the JavaScript version, which uses contourId for comparison, 
-        // and from the C++ version, which relies on pointer comparison to determine 
-        // a consistent ordering for collinear segments. 
-        //
-        // In this implementation, the unique ID is generated via a static counter during 
-        // the construction of each SweepEvent. This ensures that every event has a distinct
-        // identifier, mimicking the pointer-based uniqueness in the C++ version.
-        //
-        // The order of comparison is reversed when the creation order of the SweepEvent instances is swapped. 
-        // This behavior is consistent with the use of unique IDs to establish a deterministic and 
-        // consistent order for collinear segments, which may vary based on the sequence in which the
-        // instances are created.
-        se2 = new(pt, true, new SweepEvent(new Vector2(3, 1), false));
-        se1 = new(pt, true, new SweepEvent(new Vector2(5, 1), false));
+        se1.ContourId = 2;
+        se2.ContourId = 1;
+
         Assert.Equal(1, this.segmentComparer.Compare(se1, se2));
     }
 
