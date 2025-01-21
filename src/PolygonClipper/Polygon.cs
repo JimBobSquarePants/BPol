@@ -81,7 +81,7 @@ public sealed class Polygon
     /// </summary>
     /// <returns>The <see cref="Box2"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Box2 BBox()
+    internal Box2 BBox()
     {
         if (this.NContours == 0)
         {

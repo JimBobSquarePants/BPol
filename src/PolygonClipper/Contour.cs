@@ -65,7 +65,7 @@ public sealed class Contour
     /// </summary>
     /// <param name="p">The index of the segment.</param>
     /// <returns>The <see cref="Segment"/>.</returns>
-    public Segment Segment(int p)
+    internal Segment Segment(int p)
         => (p == this.NVertices - 1)
         ? new Segment(this.points[^1], this.points[0])
         : new Segment(this.points[p], this.points[p + 1]);
@@ -74,7 +74,7 @@ public sealed class Contour
     /// Gets the bounding box.
     /// </summary>
     /// <returns>The <see cref="Box2"/>.</returns>
-    public Box2 BBox()
+    internal Box2 BBox()
     {
         if (this.NVertices == 0)
         {
