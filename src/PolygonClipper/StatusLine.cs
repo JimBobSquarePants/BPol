@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -9,9 +10,10 @@ namespace PolygonClipper;
 /// <summary>
 /// Represents a status line for the sweep line algorithm, maintaining a sorted collection of sweep events.
 /// </summary>
+[DebuggerDisplay("Count = {Count}")]
 internal sealed class StatusLine
 {
-    private readonly List<SweepEvent> events = new();
+    private readonly List<SweepEvent> sortedEvents = new();
     private readonly SegmentComparer comparer = new();
 
     /// <summary>
@@ -20,7 +22,7 @@ internal sealed class StatusLine
     public int Count
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => this.events.Count;
+        get => this.sortedEvents.Count;
     }
 
     /// <summary>
@@ -31,7 +33,7 @@ internal sealed class StatusLine
     public SweepEvent this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => this.events[index];
+        get => this.sortedEvents[index];
     }
 
     /// <summary>
@@ -41,13 +43,14 @@ internal sealed class StatusLine
     /// <returns>The index where the event was inserted.</returns>
     public int Insert(SweepEvent e)
     {
-        int index = this.events.BinarySearch(e, this.comparer);
+        int index = this.sortedEvents.BinarySearch(e, this.comparer);
         if (index < 0)
         {
             index = ~index; // Get the correct insertion point
         }
 
-        this.events.Insert(index, e);
+        this.sortedEvents.Insert(index, e);
+        this.UpdateIndices();
         return index;
     }
 
@@ -59,5 +62,27 @@ internal sealed class StatusLine
     /// Thrown if <paramref name="index"/> is less than 0 or greater than or equal to the number of events.
     /// </exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void RemoveAt(int index) => this.events.RemoveAt(index);
+    public void RemoveAt(int index)
+    {
+        this.sortedEvents.RemoveAt(index);
+        this.UpdateIndices();
+    }
+
+    /// <summary>
+    /// Updates the <see cref="SweepEvent.PosSL"/> property for all events in the list.
+    /// </summary>
+    private void UpdateIndices()
+    {
+        List<SweepEvent> e = this.sortedEvents;
+        for (int i = 0; i < this.sortedEvents.Count; i++)
+        {
+            e[i].PosSL = i;
+
+            // Ensure paired events also reference the correct position
+            if (e[i].OtherEvent != null)
+            {
+                e[i].OtherEvent.PosSL = i;
+            }
+        }
+    }
 }

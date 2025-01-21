@@ -23,7 +23,7 @@ internal sealed class SweepEvent
         Vector2 point,
         bool left,
         SweepEvent otherEvent,
-        PolygonType polygonType = PolygonType.SUBJECT,
+        PolygonType polygonType = PolygonType.Subject,
         EdgeType edgeType = EdgeType.Normal)
     {
         this.Point = point;
@@ -39,7 +39,7 @@ internal sealed class SweepEvent
     /// <param name="point">The point associated with the event.</param>
     /// <param name="left">Whether the point is the left endpoint of the segment.</param>
     /// <param name="polygonType">The polygon type to which the segment belongs.</param>
-    public SweepEvent(Vector2 point, bool left, PolygonType polygonType = PolygonType.SUBJECT)
+    public SweepEvent(Vector2 point, bool left, PolygonType polygonType = PolygonType.Subject)
     {
         this.Point = point;
         this.Left = left;
@@ -58,7 +58,7 @@ internal sealed class SweepEvent
         this.Point = point;
         this.Left = left;
         this.ContourId = contourId;
-        this.PolygonType = PolygonType.SUBJECT;
+        this.PolygonType = PolygonType.Subject;
         this.EdgeType = EdgeType.Normal;
     }
 

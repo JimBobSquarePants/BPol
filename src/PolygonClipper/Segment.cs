@@ -10,7 +10,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Represents a line segment on a plane.
 /// </summary>
-public readonly struct Segment : IEquatable<Segment>
+internal readonly struct Segment : IEquatable<Segment>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="Segment"/> struct.

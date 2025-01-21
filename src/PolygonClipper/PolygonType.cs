@@ -6,15 +6,15 @@ namespace PolygonClipper;
 /// <summary>
 /// Specifies the type of a polygon in a boolean operation.
 /// </summary>
-public enum PolygonType
+internal enum PolygonType
 {
     /// <summary>
     /// Represents the subject polygon in a boolean operation.
     /// </summary>
-    SUBJECT = 0,
+    Subject = 0,
 
     /// <summary>
     /// Represents the clipping polygon in a boolean operation.
     /// </summary>
-    CLIPPING = 1
+    Clipping = 1
 }

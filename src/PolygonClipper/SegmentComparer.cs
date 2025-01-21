@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace PolygonClipper;
 
@@ -55,20 +56,45 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             return x.Below(y.Point) ? -1 : 1;
         }
 
-        // Segments are collinear
-        if (x.PolygonType != y.PolygonType)
+        // JavaScript comparer is different to C++
+        if (x.PolygonType == y.PolygonType) // Same polygon
         {
-            return x.PolygonType < y.PolygonType ? -1 : 1;
+            Vector2 p1 = x.Point;
+            Vector2 p2 = y.Point;
+
+            if (p1 == p2) // Points are the same
+            {
+                // Compare the other endpoints of the segments
+                p1 = x.OtherEvent.Point;
+                p2 = y.OtherEvent.Point;
+
+                if (p1 == p2) // Other endpoints are also the same
+                {
+                    return 0;
+                }
+
+                return x.ContourId > y.ContourId ? 1 : -1;
+            }
+        }
+        else // Segments are collinear but belong to separate polygons
+        {
+            return x.PolygonType == PolygonType.Subject ? -1 : 1;
         }
 
-        // Use a consistent ordering criterion for collinear segments with the same id.
-        if (x.Point == y.Point)
-        {
-            return x.ContourId > y.ContourId ? 1 : -1;
-        }
+        //// Segments are collinear
+        //if (x.PolygonType != y.PolygonType)
+        //{
+        //    return x.PolygonType < y.PolygonType ? -1 : 1;
+        //}
+
+        //// Use a consistent ordering criterion for collinear segments with the same id.
+        //if (x.Point == y.Point)
+        //{
+        //     return x.ContourId > y.ContourId ? 1 : -1;
+        //}
 
         // Fall back to the sweep event comparator for final comparison
-        return this.eventComparer.Compare(x, y);
+        return this.eventComparer.Compare(x, y) == 1 ? 1 : -1;
     }
 
     /// <inheritdoc/>

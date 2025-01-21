@@ -10,7 +10,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Represents a bounding box.
 /// </summary>
-public readonly struct Box2 : IEquatable<Box2>
+internal readonly struct Box2 : IEquatable<Box2>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="Box2"/> struct.

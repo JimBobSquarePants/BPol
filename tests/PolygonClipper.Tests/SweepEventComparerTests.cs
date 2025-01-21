@@ -100,7 +100,7 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_CollinearEdges()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(1.0f, 1.0f), false), PolygonType.CLIPPING);
+        SweepEvent e1 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(1.0f, 1.0f), false), PolygonType.Clipping);
         SweepEvent e2 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(2.0f, 2.0f), false));
 
         SweepEventComparer comparer = new();
