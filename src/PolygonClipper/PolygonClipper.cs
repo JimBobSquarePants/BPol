@@ -676,7 +676,7 @@ public class PolygonClipper
             Vector2 initial = resultEvents[i].Point;
             contour.Add(initial);
 
-            while (resultEvents[pos].OtherEvent.Point != initial)
+            while (true)
             {
                 processed[pos] = true;
                 if (resultEvents[pos].Left)
@@ -694,7 +694,7 @@ public class PolygonClipper
                 contour.Add(resultEvents[pos].Point);
                 pos = NextPos(pos, resultEvents, processed, originalPos);
 
-                if (pos == originalPos)
+                if (pos == originalPos || pos >= resultEvents.Count)
                 {
                     break;
                 }
@@ -703,11 +703,6 @@ public class PolygonClipper
             processed[pos] = processed[resultEvents[pos].Pos] = true;
             resultEvents[pos].OtherEvent.ResultInOut = true;
             resultEvents[pos].OtherEvent.ContourId = contourId;
-
-            if ((depth[contourId] & 1) == 1)
-            {
-                contour.ChangeOrientation();
-            }
         }
     }
 
