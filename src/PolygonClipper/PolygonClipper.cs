@@ -703,11 +703,6 @@ public class PolygonClipper
             processed[pos] = processed[resultEvents[pos].Pos] = true;
             resultEvents[pos].OtherEvent.ResultInOut = true;
             resultEvents[pos].OtherEvent.ContourId = contourId;
-
-            if ((depth[contourId] & 1) == 1)
-            {
-                contour.ChangeOrientation();
-            }
         }
     }
 
