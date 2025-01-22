@@ -80,20 +80,8 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             return x.PolygonType == PolygonType.Subject ? -1 : 1;
         }
 
-        //// Segments are collinear
-        //if (x.PolygonType != y.PolygonType)
-        //{
-        //    return x.PolygonType < y.PolygonType ? -1 : 1;
-        //}
-
-        //// Use a consistent ordering criterion for collinear segments with the same id.
-        //if (x.Point == y.Point)
-        //{
-        //    return x.ContourId < y.ContourId ? -1 : 1;
-        //}
-
         // Fall back to the sweep event comparator for final comparison
-        return this.eventComparer.Compare(x, y);
+        return this.eventComparer.Compare(x, y) == 1 ? 1 : -1;
     }
 
     /// <inheritdoc/>

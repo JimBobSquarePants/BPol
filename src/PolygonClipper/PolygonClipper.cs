@@ -8,8 +8,6 @@ using System.Numerics;
 
 namespace PolygonClipper;
 
-using Node = SplayTree<SweepEvent, SweepEvent>.Node;
-
 /// <summary>
 /// Implements a robust algorithm for performing boolean operations on polygons.
 /// </summary>
@@ -41,11 +39,6 @@ public class PolygonClipper
     private readonly StablePriorityQueue<SweepEvent> eventQueue;
 
     /// <summary>
-    /// The sweep line status (sorted segments intersecting the sweep line)
-    /// </summary>
-    private readonly SplayTree<SweepEvent, SweepEvent> statusLine;
-
-    /// <summary>
     /// To compare events.
     /// </summary>
     private readonly SweepEventComparer sweepEventComparer;
@@ -70,7 +63,6 @@ public class PolygonClipper
         this.operation = operation;
         this.sweepEventComparer = new();
         this.eventQueue = new(this.sweepEventComparer);
-        this.statusLine = new(new SegmentComparer());
         this.sortedEvents = new();
     }
 
@@ -172,13 +164,12 @@ public class PolygonClipper
 
         // Sweep line algorithm: process events in the priority queue
         int added = 0;
-        SplayTree<SweepEvent, SweepEvent> sweepLine = this.statusLine;
+        StatusLine sweepLine = new();
         float minMaxX = MathF.Min(subjectBB.XMax, clippingBB.XMax);
 
         SweepEvent se;
-        Node prev;
-        Node next;
-        Node begin = null;
+        SweepEvent prev;
+        SweepEvent next;
         while (this.eventQueue.Count > 0)
         {
             se = this.eventQueue.Dequeue();
@@ -202,24 +193,21 @@ public class PolygonClipper
             if (se.Left)
             {
                 // Insert the event into the status line and get neighbors
-                next = prev = sweepLine.Insert(se);
-                begin = sweepLine.MinNode();
-
-                prev = (prev != begin) ? sweepLine.Previous(prev) : null;
-                next = sweepLine.Next(next);
+                sweepLine.Add(se);
+                next = sweepLine.GetNext(se);
+                prev = sweepLine.GetPrevious(se);
 
                 // Compute fields for the current event
-                SweepEvent prevEvent = prev?.Key;
-                this.ComputeFields(se, prevEvent);
+                this.ComputeFields(se, prev);
 
                 // Check intersection with the next neighbor
                 if (next != null)
                 {
                     // Check intersection with the next neighbor
-                    if (this.PossibleIntersection(se, next.Key) == 2)
+                    if (this.PossibleIntersection(se, next) == 2)
                     {
-                        this.ComputeFields(se, prevEvent);
-                        this.ComputeFields(next.Key, se);
+                        this.ComputeFields(se, prev);
+                        this.ComputeFields(next, se);
                     }
                 }
 
@@ -227,15 +215,11 @@ public class PolygonClipper
                 if (prev != null)
                 {
                     // Check intersection with the previous neighbor
-                    if (this.PossibleIntersection(prev.Key, se) == 2)
+                    if (this.PossibleIntersection(prev, se) == 2)
                     {
-                        Node prevprev = prev;
-                        prevprev = (prevprev != begin) ? sweepLine.Previous(prevprev) : null;
-
-                        SweepEvent prevprevEvent = prevprev?.Key;
-
-                        this.ComputeFields(prevEvent, prevprevEvent);
-                        this.ComputeFields(se, prevEvent);
+                        SweepEvent prevprev = sweepLine.GetPrevious(prev);
+                        this.ComputeFields(prev, prevprev);
+                        this.ComputeFields(se, prev);
                     }
                 }
             }
@@ -247,15 +231,15 @@ public class PolygonClipper
 
                 if (prev != null && next != null)
                 {
-                    prev = (prev != begin) ? sweepLine.Previous(prev) : null;
-                    next = sweepLine.Next(next);
+                    prev = sweepLine.GetPrevious(prev);
+                    next = sweepLine.GetNext(next);
                     sweepLine.Remove(se);
 
                     // Check intersection between neighbors
                     if (next != null && prev != null)
                     {
                         // Shift `next` to account for the removal
-                        this.PossibleIntersection(prev.Key, next.Key);
+                        this.PossibleIntersection(prev, next);
                     }
                 }
             }
@@ -630,9 +614,10 @@ public class PolygonClipper
         while (!sorted)
         {
             sorted = true;
-            for (int i = 0; i < resultEvents.Count - 1; i++)
+            for (int i = 0; i < resultEvents.Count; i++)
             {
-                if (this.sweepEventComparer.Compare(resultEvents[i], resultEvents[i + 1]) > 0)
+                // Positive means "out of order"
+                if ((i + 1 < resultEvents.Count) && this.sweepEventComparer.Compare(resultEvents[i], resultEvents[i + 1]) == 1)
                 {
                     (resultEvents[i], resultEvents[i + 1]) = (resultEvents[i + 1], resultEvents[i]);
                     sorted = false;
