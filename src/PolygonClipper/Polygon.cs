@@ -135,133 +135,133 @@ public sealed class Polygon
     /// <summary>
     /// Computes and holes in the polygon.
     /// </summary>
-    public void ComputeHoles()
-    {
-        if (this.NContours < 2)
-        {
-            if (this.NContours == 1 && this.Contour(0).Clockwise())
-            {
-                this.Contour(0).ChangeOrientation();
-            }
+    //public void ComputeHoles()
+    //{
+    //    if (this.NContours < 2)
+    //    {
+    //        if (this.NContours == 1 && this.Contour(0).Clockwise())
+    //        {
+    //            this.Contour(0).ChangeOrientation();
+    //        }
 
-            return;
-        }
+    //        return;
+    //    }
 
-        int initCapacity = this.NVertices() * 2;
-        List<SweepEvent> ev = new(initCapacity);
-        List<SweepEvent> evp = new(initCapacity);
-        for (int i = 0; i < this.NContours; i++)
-        {
-            Contour contour = this.Contour(i);
-            contour.SetCounterClockwise();
-            for (int j = 0; j < contour.NEdges; j++)
-            {
-                Segment s = contour.Segment(j);
-                if (s.IsVertical())
-                {
-                    // Vertical segments are not processed.
-                    continue;
-                }
+    //    int initCapacity = this.NVertices() * 2;
+    //    List<SweepEvent> ev = new(initCapacity);
+    //    List<SweepEvent> evp = new(initCapacity);
+    //    for (int i = 0; i < this.NContours; i++)
+    //    {
+    //        Contour contour = this.Contour(i);
+    //        contour.SetCounterClockwise();
+    //        for (int j = 0; j < contour.NEdges; j++)
+    //        {
+    //            Segment s = contour.Segment(j);
+    //            if (s.IsVertical())
+    //            {
+    //                // Vertical segments are not processed.
+    //                continue;
+    //            }
 
-                ev.Add(new SweepEvent(s.Source, true, i));
-                ev.Add(new SweepEvent(s.Target, true, i));
-                SweepEvent se1 = ev[^2];
-                SweepEvent se2 = ev[^1];
-                se1.OtherEvent = se2;
-                se2.OtherEvent = se1;
+    //            ev.Add(new SweepEvent(s.Source, true, i));
+    //            ev.Add(new SweepEvent(s.Target, true, i));
+    //            SweepEvent se1 = ev[^2];
+    //            SweepEvent se2 = ev[^1];
+    //            se1.OtherEvent = se2;
+    //            se2.OtherEvent = se1;
 
-                if (se1.Point.X < se2.Point.X)
-                {
-                    se2.Left = false;
-                    se1.InOut = false;
-                }
-                else
-                {
-                    se1.Left = false;
-                    se1.InOut = true;
-                }
+    //            if (se1.Point.X < se2.Point.X)
+    //            {
+    //                se2.Left = false;
+    //                se1.InOut = false;
+    //            }
+    //            else
+    //            {
+    //                se1.Left = false;
+    //                se1.InOut = true;
+    //            }
 
-                evp.Add(se1);
-                evp.Add(se2);
-            }
-        }
+    //            evp.Add(se1);
+    //            evp.Add(se2);
+    //        }
+    //    }
 
-        evp.Sort(new SweepEventComparer());
+    //    evp.Sort(new SweepEventComparer());
 
-        StatusLine sl = new(); // Status line.
-        Span<bool> processed = new bool[this.NContours];
-        Span<int> holeOf = new int[this.NContours]; // -1;
-        holeOf.Fill(-1);
+    //    StatusLine sl = new(); // Status line.
+    //    Span<bool> processed = new bool[this.NContours];
+    //    Span<int> holeOf = new int[this.NContours]; // -1;
+    //    holeOf.Fill(-1);
 
-        int nProcessed = 0;
-        for (int i = 0; i < evp.Count && nProcessed < this.NContours; i++)
-        {
-            SweepEvent e = evp[i];
+    //    int nProcessed = 0;
+    //    for (int i = 0; i < evp.Count && nProcessed < this.NContours; i++)
+    //    {
+    //        SweepEvent e = evp[i];
 
-            if (e.Left)
-            {
-                // The segment must be inserted into S
-                e.PosSL = sl.Insert(e);
+    //        if (e.Left)
+    //        {
+    //            // The segment must be inserted into S
+    //            e.PosSL = sl.Insert(e);
 
-                if (!processed[e.ContourId])
-                {
-                    processed[e.ContourId] = true;
-                    nProcessed++;
-                    int prev = e.PosSL;
+    //            if (!processed[e.ContourId])
+    //            {
+    //                processed[e.ContourId] = true;
+    //                nProcessed++;
+    //                int prev = e.PosSL;
 
-                    if (prev == 0)
-                    {
-                        this.Contour(e.ContourId).SetCounterClockwise();
-                    }
-                    else
-                    {
-                        // Get the preceding event
-                        SweepEvent prevEvent = sl[--prev];
-                        Contour contour = this.Contour(e.ContourId);
-                        Contour prevContour = this.Contour(prevEvent.ContourId);
-                        if (!prevEvent.InOut)
-                        {
-                            holeOf[e.ContourId] = prevEvent.ContourId;
-                            contour.External = false;
-                            prevContour.AddHole(e.ContourId);
+    //                if (prev == 0)
+    //                {
+    //                    this.Contour(e.ContourId).SetCounterClockwise();
+    //                }
+    //                else
+    //                {
+    //                    // Get the preceding event
+    //                    SweepEvent prevEvent = sl[--prev];
+    //                    Contour contour = this.Contour(e.ContourId);
+    //                    Contour prevContour = this.Contour(prevEvent.ContourId);
+    //                    if (!prevEvent.InOut)
+    //                    {
+    //                        holeOf[e.ContourId] = prevEvent.ContourId;
+    //                        contour.External = false;
+    //                        prevContour.AddHole(e.ContourId);
 
-                            if (prevContour.CounterClockwise())
-                            {
-                                contour.SetClockwise();
-                            }
-                            else
-                            {
-                                contour.SetCounterClockwise();
-                            }
-                        }
-                        else if (holeOf[prevEvent.ContourId] != -1)
-                        {
-                            holeOf[e.ContourId] = holeOf[prevEvent.ContourId];
-                            contour.External = false;
-                            Contour hole = this.Contour(holeOf[e.ContourId]);
-                            hole.AddHole(e.ContourId);
+    //                        if (prevContour.CounterClockwise())
+    //                        {
+    //                            contour.SetClockwise();
+    //                        }
+    //                        else
+    //                        {
+    //                            contour.SetCounterClockwise();
+    //                        }
+    //                    }
+    //                    else if (holeOf[prevEvent.ContourId] != -1)
+    //                    {
+    //                        holeOf[e.ContourId] = holeOf[prevEvent.ContourId];
+    //                        contour.External = false;
+    //                        Contour hole = this.Contour(holeOf[e.ContourId]);
+    //                        hole.AddHole(e.ContourId);
 
-                            if (hole.CounterClockwise())
-                            {
-                                contour.SetClockwise();
-                            }
-                            else
-                            {
-                                contour.SetCounterClockwise();
-                            }
-                        }
-                        else
-                        {
-                            contour.SetCounterClockwise();
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // The segment must be removed from S
-                sl.RemoveAt(e.OtherEvent.PosSL);
-            }
-        }
-    }
+    //                        if (hole.CounterClockwise())
+    //                        {
+    //                            contour.SetClockwise();
+    //                        }
+    //                        else
+    //                        {
+    //                            contour.SetCounterClockwise();
+    //                        }
+    //                    }
+    //                    else
+    //                    {
+    //                        contour.SetCounterClockwise();
+    //                    }
+    //                }
+    //            }
+    //        }
+    //        else
+    //        {
+    //            // The segment must be removed from S
+    //            sl.RemoveAt(e.OtherEvent.PosSL);
+    //        }
+    //    }
+    //}
 }

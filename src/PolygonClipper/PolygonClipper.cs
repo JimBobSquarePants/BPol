@@ -8,6 +8,8 @@ using System.Numerics;
 
 namespace PolygonClipper;
 
+using Node = SplayTree<SweepEvent, SweepEvent>.Node;
+
 /// <summary>
 /// Implements a robust algorithm for performing boolean operations on polygons.
 /// </summary>
@@ -41,7 +43,7 @@ public class PolygonClipper
     /// <summary>
     /// The sweep line status (sorted segments intersecting the sweep line)
     /// </summary>
-    private readonly StatusLine statusLine;
+    private readonly SplayTree<SweepEvent, SweepEvent> statusLine;
 
     /// <summary>
     /// To compare events.
@@ -68,7 +70,7 @@ public class PolygonClipper
         this.operation = operation;
         this.sweepEventComparer = new();
         this.eventQueue = new(this.sweepEventComparer);
-        this.statusLine = new();
+        this.statusLine = new(new SegmentComparer());
         this.sortedEvents = new();
     }
 
@@ -170,17 +172,22 @@ public class PolygonClipper
 
         // Sweep line algorithm: process events in the priority queue
         int added = 0;
-        StatusLine line = this.statusLine;
+        SplayTree<SweepEvent, SweepEvent> sweepLine = this.statusLine;
         float minMaxX = MathF.Min(subjectBB.XMax, clippingBB.XMax);
+
+        SweepEvent se;
+        Node prev;
+        Node next;
+        Node begin = null;
         while (this.eventQueue.Count > 0)
         {
-            SweepEvent se = this.eventQueue.Dequeue();
+            se = this.eventQueue.Dequeue();
             added++;
 
-            if (added is 15 or 16 or 24)
-            {
-                Debug.WriteLine("Event Added: " + se.Point);
-            }
+            // if (added is 15 or 16 or 24)
+            // {
+            //    Debug.WriteLine("Event Added: " + se.Point);
+            // }
 
             // Optimization: skip further processing if intersection is impossible
             if ((this.operation == BooleanOperation.Intersection && se.Point.X > minMaxX) ||
@@ -195,37 +202,40 @@ public class PolygonClipper
             if (se.Left)
             {
                 // Insert the event into the status line and get neighbors
-                int it = se.PosSL = line.Insert(se);
+                next = prev = sweepLine.Insert(se);
+                begin = sweepLine.MinNode();
 
-                // Wrap to -1 (past-the-end equivalent)
-                int prev = it != 0 ? it - 1 : -1;
-                int next = it < line.Count - 1 ? it + 1 : -1;
+                prev = (prev != begin) ? sweepLine.Previous(prev) : null;
+                next = sweepLine.Next(next);
 
                 // Compute fields for the current event
-                this.ComputeFields(se, prev, line);
+                SweepEvent prevEvent = prev?.Key;
+                this.ComputeFields(se, prevEvent);
 
                 // Check intersection with the next neighbor
-                if (next != -1)
+                if (next != null)
                 {
                     // Check intersection with the next neighbor
-                    SweepEvent nextEvent = line[next];
-                    if (this.PossibleIntersection(se, nextEvent) == 2)
+                    if (this.PossibleIntersection(se, next.Key) == 2)
                     {
-                        this.ComputeFields(se, prev, line);
-                        this.ComputeFields(nextEvent, it, line);
+                        this.ComputeFields(se, prevEvent);
+                        this.ComputeFields(next.Key, se);
                     }
                 }
 
                 // Check intersection with the previous neighbor
-                if (prev != -1)
+                if (prev != null)
                 {
                     // Check intersection with the previous neighbor
-                    SweepEvent prevEvent = line[prev];
-                    if (this.PossibleIntersection(prevEvent, se) == 2)
+                    if (this.PossibleIntersection(prev.Key, se) == 2)
                     {
-                        int prevPrev = prev > 0 ? prev - 1 : -1;
-                        this.ComputeFields(prevEvent, prevPrev, line);
-                        this.ComputeFields(se, prev, line);
+                        Node prevprev = prev;
+                        prevprev = (prevprev != begin) ? sweepLine.Previous(prevprev) : null;
+
+                        SweepEvent prevprevEvent = prevprev?.Key;
+
+                        this.ComputeFields(prevEvent, prevprevEvent);
+                        this.ComputeFields(se, prevEvent);
                     }
                 }
             }
@@ -233,21 +243,27 @@ public class PolygonClipper
             {
                 // Remove the event from the status line
                 se = se.OtherEvent;
-                int it = se.PosSL;
+                next = prev = sweepLine.Find(se);
 
-                // Wrap to -1 (past-the-end equivalent)
-                int prev = it > 0 ? it - 1 : -1;
-                int next = it < line.Count - 1 ? it + 1 : -1;
-
-                line.RemoveAt(it);
-
-                // Check intersection between neighbors
-                if (next != -1 && prev != -1)
+                if (prev != null && next != null)
                 {
-                    // Shift `next` to account for the removal
-                    this.PossibleIntersection(line[prev], line[--next]);
+                    prev = (prev != begin) ? sweepLine.Previous(prev) : null;
+                    next = sweepLine.Next(next);
+                    sweepLine.Remove(se);
+
+                    // Check intersection between neighbors
+                    if (next != null && prev != null)
+                    {
+                        // Shift `next` to account for the removal
+                        this.PossibleIntersection(prev.Key, next.Key);
+                    }
                 }
             }
+
+            //if (added is 1)
+            //{
+            //    Debug.WriteLine("Event Added: " + se.Point);
+            //}
         }
 
         // Connect edges after processing all events
@@ -368,12 +384,10 @@ public class PolygonClipper
     /// Computes fields for a given sweep event.
     /// </summary>
     /// <param name="le">The sweep event to compute fields for.</param>
-    /// <param name="prevIndex">The index of the previous event in the status line.</param>
-    /// <param name="line">The status line containing the sorted segments intersecting the sweep line.</param>
-    private void ComputeFields(SweepEvent le, int prevIndex, StatusLine line)
+    /// <param name="prev">The index of the previous event in the status line.</param>
+    private void ComputeFields(SweepEvent le, SweepEvent prev)
     {
         // Compute inOut and otherInOut fields
-        SweepEvent prev = prevIndex == -1 ? null : line[prevIndex];
         if (prev == null)
         {
             le.InOut = false;

@@ -46,8 +46,7 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             // Has the line segment associated to "x" been inserted into the segment after the line
             // segment associated to "y"?
             // Use the sweep event order to determine the comparison
-            int compResult = this.eventComparer.Compare(x, y);
-            if (compResult == 1)
+            if (this.eventComparer.Compare(x, y) == 1)
             {
                 return y.Above(x.Point) ? -1 : 1;
             }
@@ -90,11 +89,11 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
         //// Use a consistent ordering criterion for collinear segments with the same id.
         //if (x.Point == y.Point)
         //{
-        //     return x.ContourId > y.ContourId ? 1 : -1;
+        //    return x.ContourId < y.ContourId ? -1 : 1;
         //}
 
         // Fall back to the sweep event comparator for final comparison
-        return this.eventComparer.Compare(x, y) == 1 ? 1 : -1;
+        return this.eventComparer.Compare(x, y);
     }
 
     /// <inheritdoc/>
