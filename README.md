@@ -1,8 +1,8 @@
 # PolygonClipper
 
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: Six Labors Split](https://img.shields.io/badge/license-Six%20Labors%20Split-%23e30183)](https://github.com/SixLabors/PolygonClipper/blob/main/LICENSE)
 
-## A simple algorithm for Boolean operations on polygons  
+## A Simple Algorithm for Boolean Operations on Polygons  
 
 *Francisco Martínez, Carlos Ogayar, Juan R. Jiménez, Antonio J. Rueda*
   
