@@ -14,6 +14,6 @@ The original code can be found in the reference folder.
   
 The plan is to implement a performant port, add additional tests and some method by which to generate renders of output clipping operations.   
   
-This is currently an intellectual excercise but I believe a C# port could be very useful in many applications if proven successful. 
+This is currently an intellectual exercise but I believe a C# port could be very useful in many applications if proven successful. 
   
 All and any assistance is gratefully accepted. :heart:
