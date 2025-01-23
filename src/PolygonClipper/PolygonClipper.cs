@@ -13,10 +13,15 @@ namespace PolygonClipper;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class is responsible for computing boolean operations such as
-/// intersection, union, difference, and XOR between two polygons. The algorithm
-/// uses a sweep line approach with an event queue to process polygon segments
-/// efficiently. It also handles special cases, including overlapping edges,
+/// This class implements the algorithm described in the paper
+/// "A Simple Algorithm for Boolean Operations on Polygons" by Francisco Martínez,
+/// Carlos Ogayar, Juan R. Jiménez, and Antonio J. Rueda. The algorithm is designed
+/// to handle boolean operations such as intersection, union, difference, and XOR
+/// between two polygons efficiently and robustly.
+/// </para>
+/// <para>
+/// The algorithm uses a sweep line approach combined with an event queue to process
+/// polygon segments, ensuring robust handling of special cases, including overlapping edges,
 /// trivial operations (e.g., non-overlapping polygons), and edge intersections.
 /// </para>
 /// <para>The main workflow is divided into the following stages:</para>
@@ -163,77 +168,75 @@ public class PolygonClipper
         }
 
         // Sweep line algorithm: process events in the priority queue
-        int added = 0;
         StatusLine statusLine = new();
         float subjectMaxX = subjectBB.Max.X;
         float minMaxX = Vector2.Max(subjectBB.Max, clippingBB.Max).X;
 
-        SweepEvent? prev;
-        SweepEvent? next;
+        SweepEvent? prevEvent;
+        SweepEvent? nextEvent;
         while (this.eventQueue.Count > 0)
         {
-            SweepEvent se = this.eventQueue.Dequeue();
-            added++;
+            SweepEvent sweepEvent = this.eventQueue.Dequeue();
 
             // Optimization: skip further processing if intersection is impossible
-            if ((this.operation == BooleanOperation.Intersection && se.Point.X > minMaxX) ||
-                (this.operation == BooleanOperation.Difference && se.Point.X > subjectMaxX))
+            if ((this.operation == BooleanOperation.Intersection && sweepEvent.Point.X > minMaxX) ||
+                (this.operation == BooleanOperation.Difference && sweepEvent.Point.X > subjectMaxX))
             {
                 this.ConnectEdges();
                 return;
             }
 
-            this.sortedEvents.Add(se);
+            this.sortedEvents.Add(sweepEvent);
 
-            if (se.Left)
+            if (sweepEvent.Left)
             {
                 // Insert the event into the status line and get neighbors
-                int it = se.PosSL = statusLine.Insert(se);
-                prev = statusLine.Prev(it);
-                next = statusLine.Next(it);
+                int it = sweepEvent.PosSL = statusLine.Insert(sweepEvent);
+                prevEvent = statusLine.Prev(it);
+                nextEvent = statusLine.Next(it);
 
                 // Compute fields for the current event
-                this.ComputeFields(se, prev);
+                this.ComputeFields(sweepEvent, prevEvent);
 
                 // Check intersection with the next neighbor
-                if (next != null)
+                if (nextEvent != null)
                 {
                     // Check intersection with the next neighbor
-                    if (this.PossibleIntersection(se, next) == 2)
+                    if (this.PossibleIntersection(sweepEvent, nextEvent) == 2)
                     {
-                        this.ComputeFields(se, prev);
-                        this.ComputeFields(next, se);
+                        this.ComputeFields(sweepEvent, prevEvent);
+                        this.ComputeFields(nextEvent, sweepEvent);
                     }
                 }
 
                 // Check intersection with the previous neighbor
-                if (prev != null)
+                if (prevEvent != null)
                 {
                     // Check intersection with the previous neighbor
-                    if (this.PossibleIntersection(prev, se) == 2)
+                    if (this.PossibleIntersection(prevEvent, sweepEvent) == 2)
                     {
-                        SweepEvent? prevPrev = statusLine.Prev(it - 2);
-                        this.ComputeFields(prev, prevPrev);
-                        this.ComputeFields(se, prev);
+                        SweepEvent? prevPrevEvent = statusLine.Prev(it - 2);
+                        this.ComputeFields(prevEvent, prevPrevEvent);
+                        this.ComputeFields(sweepEvent, prevEvent);
                     }
                 }
             }
             else
             {
                 // Remove the event from the status line
-                se = se.OtherEvent;
-                int it = se.PosSL;
-                prev = statusLine.Prev(it);
+                sweepEvent = sweepEvent.OtherEvent;
+                int it = sweepEvent.PosSL;
+                prevEvent = statusLine.Prev(it);
 
                 statusLine.RemoveAt(it);
 
                 // Shift `next` to account for the removal
-                next = statusLine.Next(it - 1);
+                nextEvent = statusLine.Next(it - 1);
 
                 // Check intersection between neighbors
-                if (prev != null && next != null)
+                if (prevEvent != null && nextEvent != null)
                 {
-                    this.PossibleIntersection(prev, next);
+                    this.PossibleIntersection(prevEvent, nextEvent);
                 }
             }
         }
@@ -479,7 +482,7 @@ public class PolygonClipper
 #nullable disable
 
         // The line segments associated with le1 and le2 overlap
-        // TODO: Fix this by adding null checks
+        // TODO: Fix this by adding null checks or update to follow JavaScript approach.
         List<SweepEvent> sortedEvents = new();
         if (le1.Point == le2.Point)
         {
