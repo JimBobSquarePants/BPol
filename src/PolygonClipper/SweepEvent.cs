@@ -4,6 +4,8 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
+#nullable disable
+
 namespace PolygonClipper;
 
 /// <summary>

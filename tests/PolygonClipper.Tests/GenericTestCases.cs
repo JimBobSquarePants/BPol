@@ -40,18 +40,17 @@ public class GenericTestCases
 
         foreach (ExpectedResult result in expectedResults)
         {
-
             Polygon expected = result.Coordinates;
             Polygon actual = result.Operation(subject, clipping);
 
-            Assert.Equal(expected.NContours, actual.NContours);
-            for (int i = 0; i < expected.NContours; i++)
+            Assert.Equal(expected.ContourCount, actual.ContourCount);
+            for (int i = 0; i < expected.ContourCount; i++)
             {
-                Assert.Equal(expected[i].NVertices, actual[i].NVertices);
-                for (int j = 0; j < expected[i].NVertices; j++)
+                Assert.Equal(expected[i].VertexCount, actual[i].VertexCount);
+                for (int j = 0; j < expected[i].VertexCount; j++)
                 {
-                    Vector2 expectedVertex = expected[i].Vertex(j);
-                    Vector2 actualVertex = actual[i].Vertex(j);
+                    Vector2 expectedVertex = expected[i].GetVertex(j);
+                    Vector2 actualVertex = actual[i].GetVertex(j);
                     Assert.Equal(expectedVertex.X, actualVertex.X, 3);
                     Assert.Equal(expectedVertex.Y, actualVertex.Y, 3);
                 }
@@ -70,7 +69,7 @@ public class GenericTestCases
                 Contour contour = new();
                 foreach (IPosition xy in ring.Coordinates)
                 {
-                    contour.Add(new Vector2((float)xy.Longitude, (float)xy.Latitude));
+                    contour.AddVertex(new Vector2((float)xy.Longitude, (float)xy.Latitude));
                 }
                 polygon.Push(contour);
             }
@@ -88,7 +87,7 @@ public class GenericTestCases
                     Contour contour = new();
                     foreach (IPosition xy in ring.Coordinates)
                     {
-                        contour.Add(new Vector2((float)xy.Longitude, (float)xy.Latitude));
+                        contour.AddVertex(new Vector2((float)xy.Longitude, (float)xy.Latitude));
                     }
                     polygon.Push(contour);
                 }

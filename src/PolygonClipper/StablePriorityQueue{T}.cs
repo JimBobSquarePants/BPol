@@ -51,11 +51,32 @@ internal sealed class StablePriorityQueue<T>
             throw new InvalidOperationException("Queue is empty.");
         }
 
-        T result = this.heap[0];
-        this.heap[0] = this.heap[^1];
+        T top = this.heap[0];
+        T bottom = this.heap[^1];
         this.heap.RemoveAt(this.heap.Count - 1);
-        this.Down(0);
-        return result;
+
+        if (this.heap.Count > 0)
+        {
+            this.heap[0] = bottom;
+            this.Down(0);
+        }
+
+        return top;
+    }
+
+    /// <summary>
+    /// Returns the item with the highest priority (lowest value) without removing it.
+    /// </summary>
+    /// <returns>The item with the highest priority.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the priority queue is empty.</exception>
+    public T Peek()
+    {
+        if (this.heap.Count == 0)
+        {
+            throw new InvalidOperationException("Queue is empty.");
+        }
+
+        return this.heap[0];
     }
 
     /// <summary>
@@ -64,17 +85,24 @@ internal sealed class StablePriorityQueue<T>
     /// <param name="index">The index of the item to move upward.</param>
     private void Up(int index)
     {
+        List<T> data = this.heap;
+        T item = data[index];
+        IComparer<T> comparer = this.comparer;
+
         while (index > 0)
         {
             int parent = (index - 1) >> 1;
-            if (this.comparer.Compare(this.heap[index], this.heap[parent]) >= 0)
+            T current = data[parent];
+            if (comparer.Compare(item, current) >= 0)
             {
                 break;
             }
 
-            (this.heap[index], this.heap[parent]) = (this.heap[parent], this.heap[index]);
+            data[index] = current;
             index = parent;
         }
+
+        data[index] = item;
     }
 
     /// <summary>
@@ -83,30 +111,30 @@ internal sealed class StablePriorityQueue<T>
     /// <param name="index">The index of the item to move downward.</param>
     private void Down(int index)
     {
-        while (true)
+        List<T> data = this.heap;
+        int halfLength = data.Count >> 1;
+        T item = data[index];
+        IComparer<T> comparer = this.comparer;
+
+        while (index < halfLength)
         {
-            int left = (index << 1) + 1;
-            int right = left + 1;
+            int bestChild = (index << 1) + 1; // Initially left child
+            int right = bestChild + 1;
 
-            int smallest = index;
-
-            if (left < this.heap.Count && this.comparer.Compare(this.heap[left], this.heap[smallest]) < 0)
+            if (right < data.Count && this.comparer.Compare(data[right], data[bestChild]) < 0)
             {
-                smallest = left;
+                bestChild = right;
             }
 
-            if (right < this.heap.Count && this.comparer.Compare(this.heap[right], this.heap[smallest]) < 0)
-            {
-                smallest = right;
-            }
-
-            if (smallest == index)
+            if (comparer.Compare(data[bestChild], item) >= 0)
             {
                 break;
             }
 
-            (this.heap[index], this.heap[smallest]) = (this.heap[smallest], this.heap[index]);
-            index = smallest;
+            data[index] = data[bestChild];
+            index = bestChild;
         }
+
+        data[index] = item;
     }
 }

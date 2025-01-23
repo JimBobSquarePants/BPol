@@ -16,12 +16,22 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
     private readonly SweepEventComparer eventComparer = new();
 
     /// <inheritdoc/>
-    public int Compare(SweepEvent x, SweepEvent y)
+    public int Compare(SweepEvent? x, SweepEvent? y)
     {
         // If the events are the same, return 0 (no order difference)
         if (ReferenceEquals(x, y))
         {
             return 0;
+        }
+
+        if (x == null)
+        {
+            return -1;
+        }
+
+        if (y == null)
+        {
+            return 1;
         }
 
         // Check if the segments are collinear by comparing their signed areas
@@ -81,24 +91,12 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
             return x.PolygonType == PolygonType.Subject ? -1 : 1;
         }
 
-        //// Segments are collinear
-        //if (x.PolygonType != y.PolygonType)
-        //{
-        //    return x.PolygonType < y.PolygonType ? -1 : 1;
-        //}
-
-        //// Use a consistent ordering criterion for collinear segments with the same id.
-        //if (x.Point == y.Point)
-        //{
-        //     return x.ContourId > y.ContourId ? 1 : -1;
-        //}
-
         // Fall back to the sweep event comparator for final comparison
         return this.eventComparer.Compare(x, y) == 1 ? 1 : -1;
     }
 
     /// <inheritdoc/>
-    public int Compare(object x, object y)
+    public int Compare(object? x, object? y)
     {
         if (x == null)
         {

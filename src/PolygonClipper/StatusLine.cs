@@ -9,6 +9,19 @@ namespace PolygonClipper;
 
 /// <summary>
 /// Represents a status line for the sweep line algorithm, maintaining a sorted collection of sweep events.
+/// <para>
+/// Performance Characteristics:
+/// - **Insertion**: O(n) in the worst case. The operation consists of:
+///   1. A binary search (O(log n)) to determine the correct insertion point.
+///   2. A shift operation to move subsequent elements in the list (O(k)), where k is the number of elements
+///      after the insertion index. In the worst case, this can approach O(n).
+/// - **Removal**: O(n) in the worst case. After finding the index of the element to remove, subsequent
+///   elements in the list need to be shifted (O(k)), where k is the number of elements after the removed index.
+/// - **Next/Previous Access**: O(1) after the index is known, as the list provides constant-time indexing.
+/// </para>
+/// The implementation ensures efficient neighbor traversal (next/previous) at O(1), making it suitable for
+/// algorithms where neighboring elements are accessed frequently. The use of `BinarySearch` minimizes the cost
+/// of insertion/removal compared to naive search-based approaches.
 /// </summary>
 [DebuggerDisplay("Count = {Count}")]
 internal sealed class StatusLine
@@ -50,7 +63,7 @@ internal sealed class StatusLine
         }
 
         this.sortedEvents.Insert(index, e);
-        this.UpdateIndices();
+        this.Up(index);
         return index;
     }
 
@@ -65,24 +78,58 @@ internal sealed class StatusLine
     public void RemoveAt(int index)
     {
         this.sortedEvents.RemoveAt(index);
-        this.UpdateIndices();
+        this.Down(index);
     }
 
     /// <summary>
-    /// Updates the <see cref="SweepEvent.PosSL"/> property for all events in the list.
+    /// Gets the next sweep event relative to the given index.
     /// </summary>
-    private void UpdateIndices()
+    /// <param name="index">The reference index.</param>
+    /// <returns>The next sweep event, or <c>null</c> if none exists.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public SweepEvent? Next(int index)
+    {
+        if (index >= 0 && index < this.sortedEvents.Count - 1)
+        {
+            return this.sortedEvents[index + 1];
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the previous sweep event relative to the given index.
+    /// </summary>
+    /// <param name="index">The reference index.</param>
+    /// <returns>The previous sweep event, or <c>null</c> if none exists.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public SweepEvent? Prev(int index)
+    {
+        if (index > 0 && index < this.sortedEvents.Count)
+        {
+            return this.sortedEvents[index - 1];
+        }
+
+        return null;
+    }
+
+    private void Up(int index)
     {
         List<SweepEvent> e = this.sortedEvents;
-        for (int i = 0; i < this.sortedEvents.Count; i++)
+
+        for (int i = index + 1; i < e.Count; i++)
         {
             e[i].PosSL = i;
+        }
+    }
 
-            // Ensure paired events also reference the correct position
-            if (e[i].OtherEvent != null)
-            {
-                e[i].OtherEvent.PosSL = i;
-            }
+    private void Down(int index)
+    {
+        List<SweepEvent> e = this.sortedEvents;
+
+        for (int i = index; i < e.Count; i++)
+        {
+            e[i].PosSL = i;
         }
     }
 }

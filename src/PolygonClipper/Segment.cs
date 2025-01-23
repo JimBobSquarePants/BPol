@@ -61,7 +61,7 @@ internal readonly struct Segment : IEquatable<Segment>
     /// <see langword="true"/> if the segment is degenerate; otherwise <see langword="false"/>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Degenerate() => this.Source.Equals(this.Target);
+    public bool IsDegenerate() => this.Source.Equals(this.Target);
 
     /// <summary>
     /// Gets a value indicating whether the segment is vertical.
@@ -77,12 +77,12 @@ internal readonly struct Segment : IEquatable<Segment>
     /// </summary>
     /// <returns>The <see cref="Segment"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Segment ChangeOrientation()
+    public Segment Reverse()
         => new(this.Target, this.Source);
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
         => obj is Segment segment && this.Equals(segment);
 
     /// <inheritdoc/>
