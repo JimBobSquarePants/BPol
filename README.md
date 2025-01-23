@@ -1,6 +1,6 @@
 # PolygonClipper
 
-[![License: Six Labors Split](https://img.shields.io/badge/license-Six%20Labors%20Split-%23e30183)](https://github.com/SixLabors/PolygonClipper/blob/main/LICENSE)
+[![License: Six Labors Split](https://img.shields.io/badge/license-Six%20Labors%20Split-%23e30183)](https://github.com/SixLabors/PolygonClipper/blob/master/LICENSE)
 
 ## A Simple Algorithm for Boolean Operations on Polygons  
 
