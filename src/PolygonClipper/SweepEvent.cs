@@ -121,9 +121,14 @@ internal sealed class SweepEvent
     public SweepEvent PrevInResult { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the event is in the result.
+    /// Gets or sets the transition state of the event in the result.
     /// </summary>
-    public bool InResult { get; set; }
+    public ResultTransition ResultTransition { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the event contributes to the result.
+    /// </summary>
+    public bool InResult => this.ResultTransition != ResultTransition.Neutral;
 
     /// <summary>
     /// Gets or sets the position of the event in the sorted events.
@@ -134,6 +139,11 @@ internal sealed class SweepEvent
     /// Gets or sets a value indicating whether the event is a result in-out transition.
     /// </summary>
     public bool ResultInOut { get; set; }
+
+    /// <summary>
+    /// Gets or sets the output contour ID associated with this contour.
+    /// </summary>
+    public int OutputContourId { get; set; }
 
     /// <summary>
     /// Is the line segment (point, otherEvent->point) below point p.

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace PolygonClipper;
@@ -35,40 +36,19 @@ public class PolygonClipper
 {
     private readonly Polygon subject;
     private readonly Polygon clipping;
-    private Polygon result;
     private readonly BooleanOperation operation;
-
-    /// <summary>
-    /// The event queue (sorted events to be processed)
-    /// </summary>
-    private readonly StablePriorityQueue<SweepEvent> eventQueue;
-
-    /// <summary>
-    /// To compare events.
-    /// </summary>
-    private readonly SweepEventComparer sweepEventComparer;
-
-    /// <summary>
-    /// The sorted events (sorted events to be processed)
-    /// </summary>
-    private readonly List<SweepEvent> sortedEvents;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PolygonClipper"/> class.
     /// </summary>
     /// <param name="subject">The subject polygon.</param>
     /// <param name="clip">The clipping polygon.</param>
-    /// <param name="result">The result polygon.</param>
     /// <param name="operation">The operation type.</param>
-    public PolygonClipper(Polygon subject, Polygon clip, Polygon result, BooleanOperation operation)
+    public PolygonClipper(Polygon subject, Polygon clip, BooleanOperation operation)
     {
         this.subject = subject;
         this.clipping = clip;
-        this.result = result;
         this.operation = operation;
-        this.sweepEventComparer = new();
-        this.eventQueue = new(this.sweepEventComparer);
-        this.sortedEvents = new();
     }
 
     /// <summary>
@@ -79,10 +59,8 @@ public class PolygonClipper
     /// <returns>A new <see cref="Polygon"/> representing the intersection of the two polygons.</returns>
     public static Polygon Intersection(Polygon subject, Polygon clip)
     {
-        Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Intersection);
-        clipper.Run();
-        return result;
+        PolygonClipper clipper = new(subject, clip, BooleanOperation.Intersection);
+        return clipper.Run();
     }
 
     /// <summary>
@@ -93,10 +71,8 @@ public class PolygonClipper
     /// <returns>A new <see cref="Polygon"/> representing the union of the two polygons.</returns>
     public static Polygon Union(Polygon subject, Polygon clip)
     {
-        Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Union);
-        clipper.Run();
-        return result;
+        PolygonClipper clipper = new(subject, clip, BooleanOperation.Union);
+        return clipper.Run();
     }
 
     /// <summary>
@@ -108,10 +84,8 @@ public class PolygonClipper
     /// <returns>A new <see cref="Polygon"/> representing the difference between the two polygons.</returns>
     public static Polygon Difference(Polygon subject, Polygon clip)
     {
-        Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Difference);
-        clipper.Run();
-        return result;
+        PolygonClipper clipper = new(subject, clip, BooleanOperation.Difference);
+        return clipper.Run();
     }
 
     /// <summary>
@@ -123,28 +97,31 @@ public class PolygonClipper
     /// <returns>A new <see cref="Polygon"/> representing the symmetric difference of the two polygons.</returns>
     public static Polygon Xor(Polygon subject, Polygon clip)
     {
-        Polygon result = new();
-        PolygonClipper clipper = new(subject, clip, result, BooleanOperation.Xor);
-        clipper.Run();
-        return result;
+        PolygonClipper clipper = new(subject, clip, BooleanOperation.Xor);
+        return clipper.Run();
     }
 
     /// <summary>
     /// Executes the boolean operation using the sweep line algorithm.
     /// </summary>
-    public void Run()
+    /// <returns>The resulting <see cref="Polygon"/>.</returns>
+    public Polygon Run()
     {
         // Compute bounding boxes for optimization steps 1 and 2
+        Polygon subject = this.subject;
+        Polygon clipping = this.clipping;
         Box2 subjectBB = this.subject.GetBoundingBox();
         Box2 clippingBB = this.clipping.GetBoundingBox();
+        BooleanOperation operation = this.operation;
 
         // Check for trivial cases that can be resolved without sweeping
-        if (this.TrivialOperation(subjectBB, clippingBB))
+        if (TryTrivialOperation(subject, clipping, subjectBB, clippingBB, operation, out Polygon? result))
         {
-            return;
+            return result;
         }
 
         // Process all segments in the subject polygon
+        StablePriorityQueue<SweepEvent> eventQueue = new(new SweepEventComparer());
         int contourId = 0;
         for (int i = 0; i < this.subject.ContourCount; i++)
         {
@@ -152,7 +129,7 @@ public class PolygonClipper
             contourId++;
             for (int j = 0; j < contour.VertexCount; j++)
             {
-                this.ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject, eventQueue);
             }
         }
 
@@ -163,30 +140,38 @@ public class PolygonClipper
             contourId++;
             for (int j = 0; j < contour.VertexCount; j++)
             {
-                this.ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue);
             }
         }
 
         // Sweep line algorithm: process events in the priority queue
+        List<SweepEvent> sortedEvents = new();
         StatusLine statusLine = new();
+        SweepEventComparer comparer = (SweepEventComparer)eventQueue.Comparer;
         float subjectMaxX = subjectBB.Max.X;
         float minMaxX = Vector2.Max(subjectBB.Max, clippingBB.Max).X;
 
         SweepEvent? prevEvent;
         SweepEvent? nextEvent;
-        while (this.eventQueue.Count > 0)
+        int ii = 0;
+        while (eventQueue.Count > 0)
         {
-            SweepEvent sweepEvent = this.eventQueue.Dequeue();
+            SweepEvent sweepEvent = eventQueue.Dequeue();
 
             // Optimization: skip further processing if intersection is impossible
             if ((this.operation == BooleanOperation.Intersection && sweepEvent.Point.X > minMaxX) ||
                 (this.operation == BooleanOperation.Difference && sweepEvent.Point.X > subjectMaxX))
             {
-                this.ConnectEdges();
-                return;
+                return ConnectEdges(sortedEvents, comparer);
             }
 
-            this.sortedEvents.Add(sweepEvent);
+            sortedEvents.Add(sweepEvent);
+            ii++;
+
+            if (ii == 4)
+            {
+                Debug.WriteLine("First Diff");
+            }
 
             if (sweepEvent.Left)
             {
@@ -196,16 +181,16 @@ public class PolygonClipper
                 nextEvent = statusLine.Next(it);
 
                 // Compute fields for the current event
-                this.ComputeFields(sweepEvent, prevEvent);
+                ComputeFields(sweepEvent, prevEvent, operation);
 
                 // Check intersection with the next neighbor
                 if (nextEvent != null)
                 {
                     // Check intersection with the next neighbor
-                    if (this.PossibleIntersection(sweepEvent, nextEvent) == 2)
+                    if (PossibleIntersection(sweepEvent, nextEvent, eventQueue) == 2)
                     {
-                        this.ComputeFields(sweepEvent, prevEvent);
-                        this.ComputeFields(nextEvent, sweepEvent);
+                        ComputeFields(sweepEvent, prevEvent, operation);
+                        ComputeFields(nextEvent, sweepEvent, operation);
                     }
                 }
 
@@ -213,11 +198,11 @@ public class PolygonClipper
                 if (prevEvent != null)
                 {
                     // Check intersection with the previous neighbor
-                    if (this.PossibleIntersection(prevEvent, sweepEvent) == 2)
+                    if (PossibleIntersection(prevEvent, sweepEvent, eventQueue) == 2)
                     {
-                        SweepEvent? prevPrevEvent = statusLine.Prev(it - 2);
-                        this.ComputeFields(prevEvent, prevPrevEvent);
-                        this.ComputeFields(sweepEvent, prevEvent);
+                        SweepEvent? prevPrevEvent = statusLine.Prev(prevEvent.PosSL);
+                        ComputeFields(prevEvent, prevPrevEvent, operation);
+                        ComputeFields(sweepEvent, prevEvent, operation);
                     }
                 }
             }
@@ -236,21 +221,25 @@ public class PolygonClipper
                 // Check intersection between neighbors
                 if (prevEvent != null && nextEvent != null)
                 {
-                    this.PossibleIntersection(prevEvent, nextEvent);
+                    _ = PossibleIntersection(prevEvent, nextEvent, eventQueue);
                 }
             }
         }
 
         // Connect edges after processing all events
-        this.ConnectEdges();
+        return ConnectEdges(sortedEvents, comparer);
     }
 
     /// <summary>
     /// Checks for trivial cases in a boolean operation where the result can be determined
     /// without further processing.
     /// </summary>
+    /// <param name="subject">The subject polygon.</param>
+    /// <param name="clipping">The clipping polygon.</param>
     /// <param name="subjectBB">The bounding box of the subject polygon.</param>
     /// <param name="clippingBB">The bounding box of the clipping polygon.</param>
+    /// <param name="operation">The boolean operation being performed.</param>
+    /// <param name="result">The resulting polygon if the operation is trivial.</param>
     /// <returns>
     /// <see langword="true"/> if the operation results in a trivial case and the result is set;
     /// otherwise, <see langword="false"/>.
@@ -268,22 +257,30 @@ public class PolygonClipper
     /// </item>
     /// </list>
     /// </remarks>
-    private bool TrivialOperation(Box2 subjectBB, Box2 clippingBB)
+    private static bool TryTrivialOperation(
+        Polygon subject,
+        Polygon clipping,
+        Box2 subjectBB,
+        Box2 clippingBB,
+        BooleanOperation operation,
+        [NotNullWhen(true)] out Polygon? result)
     {
+        result = null;
+
         // Test 1 for trivial result case.
-        if (this.subject.ContourCount * this.clipping.ContourCount == 0)
+        if (subject.ContourCount * clipping.ContourCount == 0)
         {
-            if (this.operation == BooleanOperation.Difference)
+            if (operation == BooleanOperation.Difference)
             {
-                this.result = this.subject;
+                result = subject;
+                return true;
             }
 
-            if (this.operation is BooleanOperation.Union or BooleanOperation.Xor)
+            if (operation is BooleanOperation.Union or BooleanOperation.Xor)
             {
-                this.result = this.subject.ContourCount == 0 ? this.clipping : this.subject;
+                result = subject.ContourCount == 0 ? clipping : subject;
+                return true;
             }
-
-            return true;
         }
 
         // Test 2 for trivial result case.
@@ -291,18 +288,18 @@ public class PolygonClipper
             subjectBB.Min.Y > clippingBB.Max.Y || clippingBB.Min.Y > subjectBB.Max.Y)
         {
             // The bounding boxes do not overlap
-            if (this.operation == BooleanOperation.Difference)
+            if (operation == BooleanOperation.Difference)
             {
-                this.result = this.subject;
+                result = subject;
+                return true;
             }
 
-            if (this.operation is BooleanOperation.Union or BooleanOperation.Xor)
+            if (operation is BooleanOperation.Union or BooleanOperation.Xor)
             {
-                this.result = this.subject;
-                this.result.Join(this.clipping);
+                result = subject;
+                result.Join(clipping);
+                return true;
             }
-
-            return true;
         }
 
         return false;
@@ -314,7 +311,12 @@ public class PolygonClipper
     /// <param name="contourId">The identifier of the contour to which the segment belongs.</param>
     /// <param name="s">The segment to process.</param>
     /// <param name="pt">The polygon type to which the segment belongs.</param>
-    private void ProcessSegment(int contourId, Segment s, PolygonType pt)
+    /// <param name="eventQueue">The event queue to add the generated events to.</param>
+    private static void ProcessSegment(
+        int contourId,
+        Segment s,
+        PolygonType pt,
+        StablePriorityQueue<SweepEvent> eventQueue)
     {
         if (s.Source == s.Target)
         {
@@ -340,7 +342,7 @@ public class PolygonClipper
         else
         {
             // As a fallback, use the comparator for floating-point precision issues
-            if (this.sweepEventComparer.Compare(e1, e2) < 0)
+            if (eventQueue.Comparer.Compare(e1, e2) < 0)
             {
                 e2.Left = false;
             }
@@ -351,8 +353,8 @@ public class PolygonClipper
         }
 
         // Add the events to the event queue
-        this.eventQueue.Enqueue(e1);
-        this.eventQueue.Enqueue(e2);
+        eventQueue.Enqueue(e1);
+        eventQueue.Enqueue(e2);
     }
 
     /// <summary>
@@ -360,7 +362,8 @@ public class PolygonClipper
     /// </summary>
     /// <param name="le">The sweep event to compute fields for.</param>
     /// <param name="prev">The the previous event in the status line.</param>
-    private void ComputeFields(SweepEvent le, SweepEvent? prev)
+    /// <param name="operation">The boolean operation being performed.</param>
+    private static void ComputeFields(SweepEvent le, SweepEvent? prev, BooleanOperation operation)
     {
         // Compute inOut and otherInOut fields
         if (prev == null)
@@ -384,35 +387,94 @@ public class PolygonClipper
         // Compute PrevInResult field
         if (prev != null)
         {
-            le.PrevInResult = (!this.InResult(prev) || prev.Vertical())
+            le.PrevInResult = (!InResult(prev, operation) || prev.Vertical())
                 ? prev.PrevInResult
                 : prev;
         }
 
         // Check if the line segment belongs to the Boolean operation
-        le.InResult = this.InResult(le);
+        bool inResult = InResult(le, operation);
+        if (inResult)
+        {
+            le.ResultTransition = DetermineResultTransition(le, operation);
+        }
+        else
+        {
+            le.ResultTransition = ResultTransition.Neutral;
+        }
+    }
+
+    /// <summary>
+    /// Determines the result transition state for a given sweep event based on the specified boolean operation.
+    /// </summary>
+    /// <param name="sweepEvent">The sweep event to evaluate.</param>
+    /// <param name="operation">The boolean operation being performed (e.g., Intersection, Union, XOR, Difference).</param>
+    /// <returns>
+    /// A <see cref="ResultTransition"/> value that represents the transition state of the event:
+    /// <list type="bullet">
+    /// <item><description><see cref="ResultTransition.Contributing"/> if the event contributes to the result.</description></item>
+    /// <item><description><see cref="ResultTransition.NonContributing"/> if the event does not contribute to the result.</description></item>
+    /// <item><description><see cref="ResultTransition.Neutral"/> if the event does not affect the transition but is part of the result.</description></item>
+    /// </list>
+    /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown if the boolean operation is invalid or unsupported.</exception>
+    private static ResultTransition DetermineResultTransition(SweepEvent sweepEvent, BooleanOperation operation)
+    {
+        bool thisIn = !sweepEvent.InOut;
+        bool thatIn = !sweepEvent.OtherInOut;
+        bool isIn;
+
+        // Determine the "in" state based on the operation
+        switch (operation)
+        {
+            case BooleanOperation.Intersection:
+                isIn = thisIn && thatIn;
+                break;
+            case BooleanOperation.Union:
+                isIn = thisIn || thatIn;
+                break;
+            case BooleanOperation.Xor:
+                isIn = thisIn ^ thatIn;
+                break;
+            case BooleanOperation.Difference:
+                if (sweepEvent.PolygonType == PolygonType.Subject)
+                {
+                    isIn = thisIn && !thatIn;
+                }
+                else
+                {
+                    isIn = thatIn && !thisIn;
+                }
+
+                break;
+            default:
+                throw new InvalidOperationException("Invalid boolean operation.");
+        }
+
+        return isIn ? ResultTransition.Contributing : ResultTransition.NonContributing;
     }
 
     /// <summary>
     /// Determines if the given sweep event belongs to the result of the boolean operation.
     /// </summary>
-    /// <param name="le">The sweep event to check.</param>
+    /// <param name="sweepEvent">The sweep event to check.</param>
+    /// <param name="operation">The boolean operation being performed.</param>
     /// <returns><see langword="true"/> if the event belongs to the result; otherwise, <see langword="false"/>.</returns>
-    private bool InResult(SweepEvent le)
-        => le.EdgeType switch
+    private static bool InResult(SweepEvent sweepEvent, BooleanOperation operation)
+        => sweepEvent.EdgeType switch
         {
-            EdgeType.Normal => this.operation switch
+            EdgeType.Normal => operation switch
             {
-                BooleanOperation.Intersection => !le.OtherInOut,
-                BooleanOperation.Union => le.OtherInOut,
-                BooleanOperation.Difference => (le.OtherInOut && le.PolygonType == PolygonType.Subject) ||
-                                            (!le.OtherInOut && le.PolygonType == PolygonType.Clipping),
+                BooleanOperation.Intersection => !sweepEvent.OtherInOut,
+                BooleanOperation.Union => sweepEvent.OtherInOut,
+                BooleanOperation.Difference => (sweepEvent.OtherInOut && sweepEvent.PolygonType == PolygonType.Subject) ||
+                                            (!sweepEvent.OtherInOut && sweepEvent.PolygonType == PolygonType.Clipping),
                 BooleanOperation.Xor => true,
                 _ => false,
             },
             EdgeType.NonContributing => false,
-            EdgeType.SameTransition => this.operation is BooleanOperation.Intersection or BooleanOperation.Union,
-            EdgeType.DifferentTransition => this.operation == BooleanOperation.Difference,
+            EdgeType.SameTransition => operation is BooleanOperation.Intersection or BooleanOperation.Union,
+            EdgeType.DifferentTransition => operation == BooleanOperation.Difference,
             _ => false,
         };
 
@@ -421,6 +483,7 @@ public class PolygonClipper
     /// </summary>
     /// <param name="le1">The first sweep event representing a line segment.</param>
     /// <param name="le2">The second sweep event representing a line segment.</param>
+    /// <param name="eventQueue">The event queue to add new events to.</param>
     /// <returns>
     /// An integer indicating the result of the intersection:
     /// <list type="bullet">
@@ -433,7 +496,7 @@ public class PolygonClipper
     /// <exception cref="InvalidOperationException">
     /// Thrown when the line segments overlap but belong to the same polygon.
     /// </exception>
-    private int PossibleIntersection(SweepEvent le1, SweepEvent le2)
+    private static int PossibleIntersection(SweepEvent le1, SweepEvent le2, StablePriorityQueue<SweepEvent> eventQueue)
     {
         // Point intersections
         int nIntersections = PolygonUtilities.FindIntersection(
@@ -461,92 +524,97 @@ public class PolygonClipper
             return 0;
         }
 
+        SweepEventComparer comparer = (SweepEventComparer)eventQueue.Comparer;
+
         // The line segments associated with le1 and le2 intersect
         if (nIntersections == 1)
         {
             // If the intersection point is not an endpoint of le1 segment.
             if (le1.Point != ip1 && le1.OtherEvent.Point != ip1)
             {
-                this.DivideSegment(le1, ip1);
+                DivideSegment(le1, ip1, eventQueue, comparer);
             }
 
             // If the intersection point is not an endpoint of le2 segment.
             if (le2.Point != ip1 && le2.OtherEvent.Point != ip1)
             {
-                this.DivideSegment(le2, ip1);
+                DivideSegment(le2, ip1, eventQueue, comparer);
             }
 
             return 1;
         }
 
-#nullable disable
+        // The line segments associated with le1 and le2 overlap.
+        // TODO: Rewrite this to avoid allocation.
+        List<SweepEvent> events = new();
 
-        // The line segments associated with le1 and le2 overlap
-        // TODO: Fix this by adding null checks or update to follow JavaScript approach.
-        List<SweepEvent> sortedEvents = new();
-        if (le1.Point == le2.Point)
-        {
-            sortedEvents.Add(null);
-        }
-        else if (this.sweepEventComparer.Compare(le1, le2) > 0)
-        {
-            sortedEvents.Add(le2);
-            sortedEvents.Add(le1);
-        }
-        else
-        {
-            sortedEvents.Add(le1);
-            sortedEvents.Add(le2);
-        }
+        bool leftCoincide = le1.Point == le2.Point;
+        bool rightCoincide = le1.OtherEvent.Point == le2.OtherEvent.Point;
 
-        if (le1.OtherEvent.Point == le2.OtherEvent.Point)
+        // Populate the events buffer
+        if (!leftCoincide)
         {
-            sortedEvents.Add(null);
-        }
-        else if (this.sweepEventComparer.Compare(le1.OtherEvent, le2.OtherEvent) > 0)
-        {
-            sortedEvents.Add(le2.OtherEvent);
-            sortedEvents.Add(le1.OtherEvent);
-        }
-        else
-        {
-            sortedEvents.Add(le1.OtherEvent);
-            sortedEvents.Add(le2.OtherEvent);
-        }
-
-        if (sortedEvents.Count == 2 || (sortedEvents.Count == 3 && sortedEvents[2] != null))
-        {
-            // Both line segments are equal or share the left endpoint
-            le1.EdgeType = EdgeType.NonContributing;
-            le2.EdgeType = (le1.InOut == le2.InOut) ? EdgeType.SameTransition : EdgeType.DifferentTransition;
-            if (sortedEvents.Count == 3)
+            if (comparer.Compare(le1, le2) > 0)
             {
-                this.DivideSegment(sortedEvents[2].OtherEvent, sortedEvents[1].Point);
+                events.Add(le2);
+                events.Add(le1);
+            }
+            else
+            {
+                events.Add(le1);
+                events.Add(le2);
+            }
+        }
+
+        if (!rightCoincide)
+        {
+            if (comparer.Compare(le1.OtherEvent, le2.OtherEvent) > 0)
+            {
+                events.Add(le2.OtherEvent);
+                events.Add(le1.OtherEvent);
+            }
+            else
+            {
+                events.Add(le1.OtherEvent);
+                events.Add(le2.OtherEvent);
+            }
+        }
+
+        // Handle leftCoincide and rightCoincide cases
+        if ((leftCoincide && rightCoincide) || leftCoincide)
+        {
+            le2.EdgeType = EdgeType.NonContributing;
+            le1.EdgeType = (le2.InOut == le1.InOut)
+                ? EdgeType.SameTransition
+                : EdgeType.DifferentTransition;
+
+            if (leftCoincide && !rightCoincide)
+            {
+                DivideSegment(events[1].OtherEvent, events[0].Point, eventQueue, comparer);
             }
 
             return 2;
         }
 
-        if (sortedEvents.Count == 3)
+        // Handle the rightCoincide case
+        if (rightCoincide)
         {
-            // The line segments share the right endpoint
-            this.DivideSegment(sortedEvents[0], sortedEvents[1].Point);
+            DivideSegment(events[0], events[1].Point, eventQueue, comparer);
             return 3;
         }
 
-        if (sortedEvents[0] != sortedEvents[3].OtherEvent)
+        // Handle overlapping segments
+        if (events[0] != events[3].OtherEvent)
         {
-            // No line segment includes the other one entirely
-            this.DivideSegment(sortedEvents[0], sortedEvents[1].Point);
-            this.DivideSegment(sortedEvents[1], sortedEvents[2].Point);
+            DivideSegment(events[0], events[1].Point, eventQueue, comparer);
+            DivideSegment(events[1], events[2].Point, eventQueue, comparer);
             return 3;
         }
 
-        // One line segment includes the other one
-        this.DivideSegment(sortedEvents[0], sortedEvents[1].Point);
-        this.DivideSegment(sortedEvents[3].OtherEvent, sortedEvents[2].Point);
+        // Handle one segment fully containing the other
+        DivideSegment(events[0], events[1].Point, eventQueue, comparer);
+        DivideSegment(events[3].OtherEvent, events[2].Point, eventQueue, comparer);
         return 3;
-#nullable enable
     }
 
     /// <summary>
@@ -554,7 +622,13 @@ public class PolygonClipper
     /// </summary>
     /// <param name="le">The left event representing the segment to divide.</param>
     /// <param name="p">The point at which to divide the segment.</param>
-    private void DivideSegment(SweepEvent le, Vector2 p)
+    /// <param name="eventQueue">The event queue to add the new events to.</param>
+    /// <param name="comparer">The comparer used to sort the events.</param>
+    private static void DivideSegment(
+        SweepEvent le,
+        Vector2 p,
+        StablePriorityQueue<SweepEvent> eventQueue,
+        SweepEventComparer comparer)
     {
         // Create the right event for the left segment (result of division)
         SweepEvent r = new(p, false, le, le.PolygonType);
@@ -566,14 +640,14 @@ public class PolygonClipper
         r.ContourId = l.ContourId = le.ContourId;
 
         // Avoid rounding error: ensure the left event is processed before the right event
-        if (this.sweepEventComparer.Compare(l, le.OtherEvent) > 0)
+        if (comparer.Compare(l, le.OtherEvent) > 0)
         {
             Debug.WriteLine("Rounding error detected: Adjusting left/right flags for event ordering.");
             le.OtherEvent.Left = true;
             l.Left = false;
         }
 
-        if (this.sweepEventComparer.Compare(le, r) > 0)
+        if (comparer.Compare(le, r) > 0)
         {
             Debug.WriteLine("Rounding error detected: Event ordering issue for right event.");
         }
@@ -583,21 +657,24 @@ public class PolygonClipper
         le.OtherEvent = r;
 
         // Add the new events to the event queue
-        this.eventQueue.Enqueue(l);
-        this.eventQueue.Enqueue(r);
+        eventQueue.Enqueue(l);
+        eventQueue.Enqueue(r);
     }
 
     /// <summary>
     /// Connects edges in the result polygon by processing the sweep events
     /// and constructing contours for the final result.
     /// </summary>
-    private void ConnectEdges()
+    /// <param name="sortedEvents">The sorted list of sweep events.</param>
+    /// <param name="comparer">The comparer used to sort the events.</param>
+    /// <returns>The resulting <see cref="Polygon"/>.</returns>
+    private static Polygon ConnectEdges(List<SweepEvent> sortedEvents, SweepEventComparer comparer)
     {
         // Copy the events in the result polygon to resultEvents list
-        List<SweepEvent> resultEvents = new(this.sortedEvents.Count);
-        for (int i = 0; i < this.sortedEvents.Count; i++)
+        List<SweepEvent> resultEvents = new(sortedEvents.Count);
+        for (int i = 0; i < sortedEvents.Count; i++)
         {
-            SweepEvent se = this.sortedEvents[i];
+            SweepEvent se = sortedEvents[i];
             if ((se.Left && se.InResult) || (!se.Left && se.OtherEvent.InResult))
             {
                 resultEvents.Add(se);
@@ -611,7 +688,7 @@ public class PolygonClipper
             sorted = true;
             for (int i = 0; i < resultEvents.Count - 1; i++)
             {
-                if (this.sweepEventComparer.Compare(resultEvents[i], resultEvents[i + 1]) > 0)
+                if (comparer.Compare(resultEvents[i], resultEvents[i + 1]) > 0)
                 {
                     (resultEvents[i], resultEvents[i + 1]) = (resultEvents[i + 1], resultEvents[i]);
                     sorted = false;
@@ -619,21 +696,28 @@ public class PolygonClipper
             }
         }
 
-        // Assign positions to events and adjust for right events
+        // Assign positions to events
+        // The first loop ensures that every event gets its initial position based on its index in the list.
+        // This must be completed for all events before adjustments are made for right events to avoid inconsistent state.
         for (int i = 0; i < resultEvents.Count; i++)
         {
             resultEvents[i].Pos = i;
-            if (!resultEvents[i].Left)
+        }
+
+        // Adjust positions for right events
+        // The second loop handles swapping positions for right events with their corresponding left events.
+        // This ensures that the `Pos` values are consistent between paired events after the initial assignment.
+        for (int i = 0; i < resultEvents.Count; i++)
+        {
+            SweepEvent sweepEvent = resultEvents[i];
+            if (!sweepEvent.Left)
             {
-                (resultEvents[i].Pos, resultEvents[i].OtherEvent.Pos) = (resultEvents[i].OtherEvent.Pos, resultEvents[i].Pos);
+                (sweepEvent.OtherEvent.Pos, sweepEvent.Pos) = (sweepEvent.Pos, sweepEvent.OtherEvent.Pos);
             }
         }
 
+        Polygon result = new();
         Span<bool> processed = new bool[resultEvents.Count];
-        Span<int> depth = new int[resultEvents.Count];
-        Span<int> holeOf = new int[resultEvents.Count];
-        holeOf.Fill(-1);
-
         for (int i = 0; i < resultEvents.Count; i++)
         {
             if (processed[i])
@@ -641,58 +725,99 @@ public class PolygonClipper
                 continue;
             }
 
-            Contour contour = new();
-            this.result.Push(contour);
-            int contourId = this.result.ContourCount - 1;
-
-            if (resultEvents[i].PrevInResult != null)
-            {
-                int lowerContourId = resultEvents[i].PrevInResult.ContourId;
-                if (!resultEvents[i].PrevInResult.ResultInOut)
-                {
-                    this.result[lowerContourId].AddHoleIndex(contourId);
-                    holeOf[contourId] = lowerContourId;
-                    depth[contourId] = depth[lowerContourId] + 1;
-                    contour.IsExternal = false;
-                }
-                else if (!this.result[lowerContourId].IsExternal)
-                {
-                    this.result[holeOf[lowerContourId]].AddHoleIndex(contourId);
-                    holeOf[contourId] = holeOf[lowerContourId];
-                    depth[contourId] = depth[lowerContourId];
-                    contour.IsExternal = false;
-                }
-            }
+            int contourId = result.ContourCount;
+            Contour contour = InitializeContourFromContext(resultEvents[i], result, contourId);
 
             int pos = i;
             int originalPos = i;
             Vector2 initial = resultEvents[i].Point;
             contour.AddVertex(initial);
 
+            // Main loop to process the contour
             do
             {
                 processed[pos] = true;
+                resultEvents[pos].OutputContourId = contourId;
+
                 if (resultEvents[pos].Left)
                 {
                     resultEvents[pos].ResultInOut = false;
-                    resultEvents[pos].ContourId = contourId;
                 }
                 else
                 {
                     resultEvents[pos].OtherEvent.ResultInOut = true;
-                    resultEvents[pos].OtherEvent.ContourId = contourId;
                 }
 
                 processed[pos = resultEvents[pos].Pos] = true;
+                resultEvents[pos].OutputContourId = contourId;
                 contour.AddVertex(resultEvents[pos].Point);
                 pos = NextPos(pos, resultEvents, processed, originalPos);
             }
             while (pos != originalPos && pos < resultEvents.Count);
 
-            processed[pos] = processed[resultEvents[pos].Pos] = true;
-            resultEvents[pos].OtherEvent.ResultInOut = true;
-            resultEvents[pos].OtherEvent.ContourId = contourId;
+            result.Push(contour);
         }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Initializes a contour based on its context in relation to previous events and contours.
+    /// Implements the 4 cases of parent contours from the Martinez paper (Fig. 4).
+    /// </summary>
+    /// <param name="sweepEvent">The current sweep event.</param>
+    /// <param name="polygon">The collection of contours processed so far.</param>
+    /// <param name="contourId">The ID for the new contour.</param>
+    /// <returns>The initialized <see cref="Contour"/>.</returns>
+    private static Contour InitializeContourFromContext(SweepEvent sweepEvent, Polygon polygon, int contourId)
+    {
+        Contour contour = new();
+
+        // Check if there is a "previous in result" event
+        if (sweepEvent.PrevInResult != null)
+        {
+            SweepEvent prevInResult = sweepEvent.PrevInResult;
+
+            // It is valid to query PrevInResult's outputContourId because it must have already been processed
+            int lowerContourId = prevInResult.OutputContourId;
+            ResultTransition lowerResultTransition = prevInResult.ResultTransition;
+
+            if (lowerResultTransition > 0)
+            {
+                // We are inside. Check if the lower contour is a hole or an exterior contour.
+                Contour lowerContour = polygon[lowerContourId];
+
+                if (lowerContour.HoleOf != null)
+                {
+                    // The lower contour is a hole: Connect the new contour as a hole to its parent and use the same depth.
+                    int parentContourId = lowerContour.HoleOf.Value;
+                    polygon[parentContourId].AddHoleIndex(contourId);
+                    contour.HoleOf = parentContourId;
+                    contour.Depth = polygon[lowerContourId].Depth;
+                }
+                else
+                {
+                    // The lower contour is an exterior contour: Connect the new contour as a hole and increment depth.
+                    polygon[lowerContourId].AddHoleIndex(contourId);
+                    contour.HoleOf = lowerContourId;
+                    contour.Depth = polygon[lowerContourId].Depth + 1;
+                }
+            }
+            else
+            {
+                // We are outside: This contour is an exterior contour of the same depth.
+                contour.HoleOf = null;
+                contour.Depth = polygon[lowerContourId].Depth;
+            }
+        }
+        else
+        {
+            // There is no "previous in result" event: This contour is an exterior contour with depth 0.
+            contour.HoleOf = null;
+            contour.Depth = 0;
+        }
+
+        return contour;
     }
 
     /// <summary>
@@ -716,9 +841,10 @@ public class PolygonClipper
         int originalPos)
     {
         int newPos = pos + 1;
+        Vector2 initial = resultEvents[pos].Point;
 
         // Search forward for the next unprocessed event with a different point
-        while (newPos < resultEvents.Count && resultEvents[newPos].Point == resultEvents[pos].Point)
+        while (newPos < resultEvents.Count && resultEvents[newPos].Point == initial)
         {
             if (!processed[newPos])
             {
