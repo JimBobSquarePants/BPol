@@ -2,6 +2,7 @@
 // Licensed under the Six Labors Split License.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -10,6 +11,7 @@ namespace PolygonClipper;
 /// <summary>
 /// Represents a simple polygon. The edges of the contours are interior disjoint.
 /// </summary>
+[DebuggerDisplay("Count = {VertexCount}")]
 public sealed class Contour
 {
     private bool precomputeCC;

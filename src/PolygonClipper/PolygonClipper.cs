@@ -750,7 +750,8 @@ public class PolygonClipper
                     resultEvents[pos].OtherEvent.ResultInOut = true;
                 }
 
-                processed[pos = resultEvents[pos].Pos] = true;
+                pos = resultEvents[pos].Pos;
+                processed[pos] = true;
                 resultEvents[pos].OutputContourId = contourId;
                 contour.AddVertex(resultEvents[pos].Point);
                 pos = NextPos(pos, resultEvents, processed, originalPos);
@@ -844,9 +845,15 @@ public class PolygonClipper
     {
         int newPos = pos + 1;
         Vector2 initial = resultEvents[pos].Point;
+        Vector2 next = default;
+
+        if (newPos < resultEvents.Count)
+        {
+            next = resultEvents[newPos].Point;
+        }
 
         // Search forward for the next unprocessed event with a different point
-        while (newPos < resultEvents.Count && resultEvents[newPos].Point == initial)
+        while (newPos < resultEvents.Count && initial == next)
         {
             if (!processed[newPos])
             {
@@ -854,6 +861,10 @@ public class PolygonClipper
             }
 
             newPos++;
+            if (newPos < resultEvents.Count)
+            {
+                next = resultEvents[newPos].Point;
+            }
         }
 
         // If not found, search backward for an unprocessed event
