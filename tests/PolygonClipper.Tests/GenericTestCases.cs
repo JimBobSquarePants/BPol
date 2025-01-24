@@ -46,6 +46,7 @@ public class GenericTestCases
             Assert.Equal(expected.ContourCount, actual.ContourCount);
             for (int i = 0; i < expected.ContourCount; i++)
             {
+                // We don't test for holes here as the reference tests do not do so.
                 Assert.Equal(expected[i].VertexCount, actual[i].VertexCount);
                 for (int j = 0; j < expected[i].VertexCount; j++)
                 {

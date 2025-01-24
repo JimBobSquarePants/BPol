@@ -496,7 +496,10 @@ public class PolygonClipper
     /// <exception cref="InvalidOperationException">
     /// Thrown when the line segments overlap but belong to the same polygon.
     /// </exception>
-    private static int PossibleIntersection(SweepEvent le1, SweepEvent le2, StablePriorityQueue<SweepEvent> eventQueue)
+    private static int PossibleIntersection(
+        SweepEvent le1,
+        SweepEvent le2,
+        StablePriorityQueue<SweepEvent> eventQueue)
     {
         // Point intersections
         int nIntersections = PolygonUtilities.FindIntersection(
@@ -546,12 +549,11 @@ public class PolygonClipper
 
         // The line segments associated with le1 and le2 overlap.
         // TODO: Rewrite this to avoid allocation.
-        List<SweepEvent> events = new();
-
+        List<SweepEvent> events = new(4);
         bool leftCoincide = le1.Point == le2.Point;
         bool rightCoincide = le1.OtherEvent.Point == le2.OtherEvent.Point;
 
-        // Populate the events buffer
+        // Populate the events
         if (!leftCoincide)
         {
             if (comparer.Compare(le1, le2) > 0)
