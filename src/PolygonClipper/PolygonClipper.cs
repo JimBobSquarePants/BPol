@@ -158,8 +158,8 @@ public class PolygonClipper
             SweepEvent sweepEvent = eventQueue.Dequeue();
 
             // Optimization: skip further processing if intersection is impossible
-            if ((this.operation == BooleanOperation.Intersection && sweepEvent.Point.X > minMaxX) ||
-                (this.operation == BooleanOperation.Difference && sweepEvent.Point.X > subjectMaxX))
+            if ((operation == BooleanOperation.Intersection && sweepEvent.Point.X > minMaxX) ||
+                (operation == BooleanOperation.Difference && sweepEvent.Point.X > subjectMaxX))
             {
                 return ConnectEdges(sortedEvents, comparer);
             }
