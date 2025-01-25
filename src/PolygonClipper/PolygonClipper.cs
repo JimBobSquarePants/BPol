@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 
 namespace PolygonClipper;
 
@@ -123,33 +122,33 @@ public class PolygonClipper
         // Process all segments in the subject polygon
         StablePriorityQueue<SweepEvent> eventQueue = new(new SweepEventComparer());
         int contourId = 0;
-        for (int i = 0; i < this.subject.ContourCount; i++)
+        for (int i = 0; i < subject.ContourCount; i++)
         {
-            Contour contour = this.subject[i];
+            Contour contour = subject[i];
             contourId++;
-            for (int j = 0; j < contour.VertexCount; j++)
+            for (int j = 0; j < contour.VertexCount - 1; j++)
             {
-                ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject, eventQueue);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject, eventQueue, j);
             }
         }
 
         // Process all segments in the clipping polygon
-        for (int i = 0; i < this.clipping.ContourCount; i++)
+        for (int i = 0; i < clipping.ContourCount; i++)
         {
-            Contour contour = this.clipping[i];
+            Contour contour = clipping[i];
             contourId++;
-            for (int j = 0; j < contour.VertexCount; j++)
+            for (int j = 0; j < contour.VertexCount - 1; j++)
             {
-                ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue, j);
             }
         }
 
         // Sweep line algorithm: process events in the priority queue
-        List<SweepEvent> sortedEvents = new();
+        List<SweepEvent> sortedEvents = [];
         StatusLine statusLine = new();
         SweepEventComparer comparer = (SweepEventComparer)eventQueue.Comparer;
-        float subjectMaxX = subjectBB.Max.X;
-        float minMaxX = Vector2.Max(subjectBB.Max, clippingBB.Max).X;
+        double subjectMaxX = subjectBB.Max.X;
+        double minMaxX = Vertex.Max(subjectBB.Max, clippingBB.Max).X;
 
         SweepEvent? prevEvent;
         SweepEvent? nextEvent;
@@ -316,7 +315,8 @@ public class PolygonClipper
         int contourId,
         Segment s,
         PolygonType pt,
-        StablePriorityQueue<SweepEvent> eventQueue)
+        StablePriorityQueue<SweepEvent> eventQueue,
+        int id)
     {
         if (s.Source == s.Target)
         {
@@ -331,15 +331,15 @@ public class PolygonClipper
         e1.ContourId = e2.ContourId = contourId;
 
         // Determine which endpoint is the left endpoint
-        if (s.Min == s.Source)
-        {
-            e2.Left = false;
-        }
-        else if (s.Min == s.Target)
-        {
-            e1.Left = false;
-        }
-        else
+        //if (s.Min == s.Source)
+        //{
+        //    e2.Left = false;
+        //}
+        //else if (s.Min == s.Target)
+        //{
+        //    e1.Left = false;
+        //}
+        //else
         {
             // As a fallback, use the comparator for floating-point precision issues
             if (eventQueue.Comparer.Compare(e1, e2) < 0)
@@ -505,8 +505,8 @@ public class PolygonClipper
         int nIntersections = PolygonUtilities.FindIntersection(
             le1.Segment(),
             le2.Segment(),
-            out Vector2 ip1,
-            out Vector2 _); // Currently unused but could be used to detect collinear overlapping segments
+            out Vertex ip1,
+            out Vertex _); // Currently unused but could be used to detect collinear overlapping segments
 
         if (nIntersections == 0)
         {
@@ -628,7 +628,7 @@ public class PolygonClipper
     /// <param name="comparer">The comparer used to sort the events.</param>
     private static void DivideSegment(
         SweepEvent le,
-        Vector2 p,
+        Vertex p,
         StablePriorityQueue<SweepEvent> eventQueue,
         SweepEventComparer comparer)
     {
@@ -732,7 +732,7 @@ public class PolygonClipper
 
             int pos = i;
             int originalPos = i;
-            Vector2 initial = resultEvents[i].Point;
+            Vertex initial = resultEvents[i].Point;
             contour.AddVertex(initial);
 
             // Main loop to process the contour
@@ -844,8 +844,8 @@ public class PolygonClipper
         int originalPos)
     {
         int newPos = pos + 1;
-        Vector2 initial = resultEvents[pos].Point;
-        Vector2 next = default;
+        Vertex initial = resultEvents[pos].Point;
+        Vertex next = default;
 
         if (newPos < resultEvents.Count)
         {

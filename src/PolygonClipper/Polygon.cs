@@ -14,7 +14,7 @@ public sealed class Polygon
     /// <summary>
     /// The collection of contours that make up the polygon.
     /// </summary>
-    private readonly List<Contour> contours = new();
+    private readonly List<Contour> contours = [];
 
     /// <summary>
     /// Gets the number of contours in the polygon.

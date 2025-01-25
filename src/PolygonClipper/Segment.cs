@@ -2,7 +2,6 @@
 // Licensed under the Six Labors Split License.
 
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -18,33 +17,33 @@ internal readonly struct Segment : IEquatable<Segment>
     /// <param name="source">The segment source.</param>
     /// <param name="target">The segment target.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Segment(Vector2 source, Vector2 target)
+    public Segment(Vertex source, Vertex target)
     {
         this.Source = source;
         this.Target = target;
-        this.Min = Vector2.Min(source, target);
-        this.Max = Vector2.Max(source, target);
+        this.Min = Vertex.Min(source, target);
+        this.Max = Vertex.Max(source, target);
     }
 
     /// <summary>
     /// Gets the segment source vector.
     /// </summary>
-    public Vector2 Source { get; }
+    public Vertex Source { get; }
 
     /// <summary>
     /// Gets the segment target vector.
     /// </summary>
-    public Vector2 Target { get; }
+    public Vertex Target { get; }
 
     /// <summary>
     /// Gets the point of the segment with lexicographically smallest coordinate.
     /// </summary>
-    public Vector2 Min { get; }
+    public Vertex Min { get; }
 
     /// <summary>
     /// Gets the point of the segment with lexicographically largest coordinate.
     /// </summary>
-    public Vector2 Max { get; }
+    public Vertex Max { get; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Segment left, Segment right)

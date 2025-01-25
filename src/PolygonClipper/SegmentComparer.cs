@@ -4,7 +4,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Numerics;
 
 namespace PolygonClipper;
 
@@ -35,10 +34,10 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
         }
 
         // Check if the segments are collinear by comparing their signed areas
-        float area1 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.Point);
-        float area2 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point);
+        double area1 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.Point);
+        double area2 = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point);
 
-        if (area1 != 0F || area2 != 0F)
+        if (area1 != 0 || area2 != 0)
         {
             // Segments are not collinear
             // If they share their left endpoint, use the right endpoint to sort
@@ -69,8 +68,8 @@ internal sealed class SegmentComparer : IComparer<SweepEvent>, IComparer
         // JavaScript comparer is different to C++
         if (x.PolygonType == y.PolygonType) // Same polygon
         {
-            Vector2 p1 = x.Point;
-            Vector2 p2 = y.Point;
+            Vertex p1 = x.Point;
+            Vertex p2 = y.Point;
 
             if (p1 == p2) // Points are the same
             {

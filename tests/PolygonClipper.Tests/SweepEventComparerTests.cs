@@ -2,7 +2,6 @@
 // Licensed under the Six Labors Split License.
 
 using System.Collections.Generic;
-using System.Numerics;
 using Xunit;
 
 namespace PolygonClipper.Tests;
@@ -15,8 +14,8 @@ public class SweepEventComparerTests
     public void Queue_ShouldProcessLeastByX_SweepEventFirst()
     {
         PriorityQueue<SweepEvent, SweepEvent> queue = new(this.comparer);
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(.5F, .5F), true);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(.5F, .5F), true);
 
         queue.Enqueue(e1, e1);
         queue.Enqueue(e2, e2);
@@ -29,8 +28,8 @@ public class SweepEventComparerTests
     public void Queue_ShouldProcessLeastByY_SweepEventFirst()
     {
         PriorityQueue<SweepEvent, SweepEvent> queue = new(this.comparer);
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(0, .5F), true);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(0, .5F), true);
 
         queue.Enqueue(e1, e1);
         queue.Enqueue(e2, e2);
@@ -43,8 +42,8 @@ public class SweepEventComparerTests
     public void Queue_ShouldPopLeastByLeftProp_SweepEventFirst()
     {
         PriorityQueue<SweepEvent, SweepEvent> queue = new(this.comparer);
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(0, 0), false);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(0, 0), false);
 
         queue.Enqueue(e1, e1);
         queue.Enqueue(e2, e2);
@@ -56,8 +55,8 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_XCoordinates()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(.5F, .5F), true);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(.5F, .5F), true);
 
         SweepEventComparer comparer = new();
         Assert.True(comparer.Compare(e1, e2) < 0);
@@ -67,8 +66,8 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_YCoordinates()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(0, .5F), true);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(0, .5F), true);
 
         SweepEventComparer comparer = new();
         Assert.True(comparer.Compare(e1, e2) < 0);
@@ -78,8 +77,8 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_NotLeftFirst()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true);
-        SweepEvent e2 = new(new Vector2(0, 0), false);
+        SweepEvent e1 = new(new Vertex(0, 0), true);
+        SweepEvent e2 = new(new Vertex(0, 0), false);
 
         SweepEventComparer comparer = new();
         Assert.True(comparer.Compare(e1, e2) > 0);
@@ -89,8 +88,8 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_SharedStartPoint_NotCollinearEdges()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(1.0f, 1.0f), false));
-        SweepEvent e2 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(2.0f, 3.0f), false));
+        SweepEvent e1 = new(new Vertex(0, 0), true, new SweepEvent(new Vertex(1, 1), false));
+        SweepEvent e2 = new(new Vertex(0, 0), true, new SweepEvent(new Vertex(2, 3), false));
 
         SweepEventComparer comparer = new();
         Assert.True(comparer.Compare(e1, e2) < 0);
@@ -100,8 +99,8 @@ public class SweepEventComparerTests
     [Fact]
     public void SweepEventComparison_CollinearEdges()
     {
-        SweepEvent e1 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(1.0f, 1.0f), false), PolygonType.Clipping);
-        SweepEvent e2 = new(new Vector2(0, 0), true, new SweepEvent(new Vector2(2.0f, 2.0f), false));
+        SweepEvent e1 = new(new Vertex(0, 0), true, new SweepEvent(new Vertex(1, 1), false), PolygonType.Clipping);
+        SweepEvent e2 = new(new Vertex(0, 0), true, new SweepEvent(new Vertex(2, 2), false));
 
         SweepEventComparer comparer = new();
 

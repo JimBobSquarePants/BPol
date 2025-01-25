@@ -49,8 +49,8 @@ internal sealed class SweepEventComparer : IComparer<SweepEvent>, IComparer
         }
 
         // Compare collinearity using signed area
-        float area = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point);
-        if (area != 0F)
+        double area = PolygonUtilities.SignedArea(x.Point, x.OtherEvent.Point, y.OtherEvent.Point);
+        if (area != 0)
         {
             return x.Below(y.OtherEvent.Point) ? -1 : 1;
         }

@@ -2,7 +2,6 @@
 // Licensed under the Six Labors Split License.
 
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -17,7 +16,7 @@ public readonly struct Box2 : IEquatable<Box2>
     /// </summary>
     /// <param name="vector">The xy-coordinate.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Box2(Vector2 vector)
+    public Box2(Vertex vector)
         : this(vector, vector)
     {
     }
@@ -27,7 +26,7 @@ public readonly struct Box2 : IEquatable<Box2>
     /// </summary>
     /// <param name="min">The minimum xy-coordinate.</param>
     /// <param name="max">The maximum xy-coordinate.</param>
-    public Box2(Vector2 min, Vector2 max)
+    public Box2(Vertex min, Vertex max)
     {
         this.Min = min;
         this.Max = max;
@@ -36,12 +35,12 @@ public readonly struct Box2 : IEquatable<Box2>
     /// <summary>
     /// Gets the minimum xy-coordinate.
     /// </summary>
-    public Vector2 Min { get; }
+    public Vertex Min { get; }
 
     /// <summary>
     /// Gets the maximum xy-coordinate.
     /// </summary>
-    public Vector2 Max { get; }
+    public Vertex Max { get; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Box2 left, Box2 right)
@@ -58,7 +57,7 @@ public readonly struct Box2 : IEquatable<Box2>
     /// <returns>The summed <see cref="Box2"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Box2 Add(Box2 other)
-        => new(Vector2.Min(this.Min, other.Min), Vector2.Max(this.Max, other.Max));
+        => new(Vertex.Min(this.Min, other.Min), Vertex.Max(this.Max, other.Max));
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -50,8 +50,8 @@ public class GenericTestCases
                 Assert.Equal(expected[i].VertexCount, actual[i].VertexCount);
                 for (int j = 0; j < expected[i].VertexCount; j++)
                 {
-                    Vector2 expectedVertex = expected[i].GetVertex(j);
-                    Vector2 actualVertex = actual[i].GetVertex(j);
+                    Vertex expectedVertex = expected[i].GetVertex(j);
+                    Vertex actualVertex = actual[i].GetVertex(j);
                     Assert.Equal(expectedVertex.X, actualVertex.X, 3);
                     Assert.Equal(expectedVertex.Y, actualVertex.Y, 3);
                 }
@@ -70,7 +70,7 @@ public class GenericTestCases
                 Contour contour = new();
                 foreach (IPosition xy in ring.Coordinates)
                 {
-                    contour.AddVertex(new Vector2((float)xy.Longitude, (float)xy.Latitude));
+                    contour.AddVertex(new Vertex((float)xy.Longitude, (float)xy.Latitude));
                 }
                 polygon.Push(contour);
             }
@@ -88,7 +88,7 @@ public class GenericTestCases
                     Contour contour = new();
                     foreach (IPosition xy in ring.Coordinates)
                     {
-                        contour.AddVertex(new Vector2((float)xy.Longitude, (float)xy.Latitude));
+                        contour.AddVertex(new Vertex((float)xy.Longitude, (float)xy.Latitude));
                     }
                     polygon.Push(contour);
                 }

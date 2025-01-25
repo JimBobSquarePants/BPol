@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -20,13 +19,13 @@ public sealed class Contour
     /// <summary>
     /// Set of points conforming the external contour
     /// </summary>
-    private readonly List<Vector2> points = new();
+    private readonly List<Vertex> points = [];
 
     /// <summary>
     /// Holes of the contour. They are stored as the indexes of
     /// the holes in a polygon class
     /// </summary>
-    private readonly List<int> holes = new();
+    private readonly List<int> holes = [];
 
     /// <summary>
     /// Gets the number of vertices.
@@ -63,8 +62,8 @@ public sealed class Contour
     /// Gets the vertex at the specified index of the external contour.
     /// </summary>
     /// <param name="index">The index of the vertex.</param>
-    /// <returns>The <see cref="Vector2"/>.</returns>
-    public Vector2 GetVertex(int index) => this.points[index];
+    /// <returns>The <see cref="Vertex"/>.</returns>
+    public Vertex GetVertex(int index) => this.points[index];
 
     /// <summary>
     /// Gets the hole index at the specified position in the contour.
@@ -94,7 +93,7 @@ public sealed class Contour
             return default;
         }
 
-        List<Vector2> points = this.points;
+        List<Vertex> points = this.points;
         Box2 b = new(points[0]);
         for (int i = 1; i < points.Count; ++i)
         {
@@ -119,11 +118,11 @@ public sealed class Contour
 
         this.precomputeCC = true;
 
-        float area = 0F;
-        Vector2 c;
-        Vector2 c1;
+        double area = 0;
+        Vertex c;
+        Vertex c1;
 
-        List<Vector2> points = this.points;
+        List<Vertex> points = this.points;
         for (int i = 0; i < points.Count - 1; i++)
         {
             c = points[i];
@@ -134,7 +133,7 @@ public sealed class Contour
         c = points[this.points.Count - 1];
         c1 = points[0];
         area += (c.X * c1.Y) - (c1.X * c.Y);
-        return this.cc = area >= 0F;
+        return this.cc = area >= 0;
     }
 
     /// <summary>
@@ -183,10 +182,10 @@ public sealed class Contour
     /// <param name="y">The y-coordinate offset.</param>
     public void Offset(float x, float y)
     {
-        List<Vector2> points = this.points;
+        List<Vertex> points = this.points;
         for (int i = 0; i < points.Count; i++)
         {
-            points[i] = Vector2.Add(points[i], new Vector2(x, y));
+            points[i] += new Vertex(x, y);
         }
     }
 
@@ -195,7 +194,7 @@ public sealed class Contour
     /// </summary>
     /// <param name="vertex">The vertex to add.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AddVertex(Vector2 vertex) => this.points.Add(vertex);
+    public void AddVertex(Vertex vertex) => this.points.Add(vertex);
 
     /// <summary>
     /// Removes the vertex at the specified index from the contour.
@@ -221,8 +220,8 @@ public sealed class Contour
     /// <summary>
     /// Gets the last vertex in the contour.
     /// </summary>
-    /// <returns>The last <see cref="Vector2"/> in the contour.</returns>
-    public Vector2 GetLastVertex() => this.points[^1];
+    /// <returns>The last <see cref="Vertex"/> in the contour.</returns>
+    public Vertex GetLastVertex() => this.points[^1];
 
     /// <summary>
     /// Adds a hole index to the contour.

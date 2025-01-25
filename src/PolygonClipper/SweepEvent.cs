@@ -1,7 +1,6 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 #nullable disable
@@ -22,7 +21,7 @@ internal sealed class SweepEvent
     /// <param name="polygonType">The polygon type to which the segment belongs.</param>
     /// <param name="edgeType">The type of the edge. Default is <see cref="EdgeType.Normal"/>.</param>
     public SweepEvent(
-        Vector2 point,
+        Vertex point,
         bool left,
         SweepEvent otherEvent,
         PolygonType polygonType = PolygonType.Subject,
@@ -41,7 +40,7 @@ internal sealed class SweepEvent
     /// <param name="point">The point associated with the event.</param>
     /// <param name="left">Whether the point is the left endpoint of the segment.</param>
     /// <param name="polygonType">The polygon type to which the segment belongs.</param>
-    public SweepEvent(Vector2 point, bool left, PolygonType polygonType = PolygonType.Subject)
+    public SweepEvent(Vertex point, bool left, PolygonType polygonType = PolygonType.Subject)
     {
         this.Point = point;
         this.Left = left;
@@ -55,7 +54,7 @@ internal sealed class SweepEvent
     /// <param name="point">The point associated with the event.</param>
     /// <param name="left">Whether the point is the left endpoint of the segment.</param>
     /// <param name="contourId">The ID of the contour to which the event belongs.</param>
-    public SweepEvent(Vector2 point, bool left, int contourId)
+    public SweepEvent(Vertex point, bool left, int contourId)
     {
         this.Point = point;
         this.Left = left;
@@ -67,7 +66,7 @@ internal sealed class SweepEvent
     /// <summary>
     /// Gets the point associated with the event.
     /// </summary>
-    public Vector2 Point { get; }
+    public Vertex Point { get; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the point is the
@@ -153,10 +152,10 @@ internal sealed class SweepEvent
     /// <see langword="true"/> if the line segment is below the point; otherwise <see langword="false"/>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Below(Vector2 p)
+    public bool Below(Vertex p)
         => this.Left
-        ? PolygonUtilities.SignedArea(this.Point, this.OtherEvent.Point, p) > 0F
-        : PolygonUtilities.SignedArea(this.OtherEvent.Point, this.Point, p) > 0F;
+        ? PolygonUtilities.SignedArea(this.Point, this.OtherEvent.Point, p) > 0D
+        : PolygonUtilities.SignedArea(this.OtherEvent.Point, this.Point, p) > 0D;
 
     /// <summary>
     /// Is the line segment (point, otherEvent->point) above point p.
@@ -166,7 +165,7 @@ internal sealed class SweepEvent
     /// <see langword="true"/> if the line segment is above the point; otherwise <see langword="false"/>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Above(Vector2 p) => !this.Below(p);
+    public bool Above(Vertex p) => !this.Below(p);
 
     /// <summary>
     /// Is the line segment (point, otherEvent->point) a vertical line segment.

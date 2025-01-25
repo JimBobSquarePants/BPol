@@ -2,7 +2,6 @@
 // Licensed under the Six Labors Split License.
 
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -15,9 +14,9 @@ internal static class PolygonUtilities
     /// <param name="p0">The first point.</param>
     /// <param name="p1">The second point.</param>
     /// <param name="p2">The third point.</param>
-    /// <returns>The <see cref="float"/> area.</returns>
+    /// <returns>The <see cref="double"/> area.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float SignedArea(Vector2 p0, Vector2 p1, Vector2 p2)
+    public static double SignedArea(Vertex p0, Vertex p1, Vertex p2)
         => ((p0.X - p2.X) * (p1.Y - p2.Y)) - ((p1.X - p2.X) * (p0.Y - p2.Y));
 
     /// <summary>
@@ -39,7 +38,7 @@ internal static class PolygonUtilities
     /// - Returns 1 if the intersection is a single point.
     /// - Returns 2 if the intersection is an interval.
     /// </returns>
-    public static int FindIntersection(float u0, float u1, float v0, float v1, out float start, out float end)
+    public static int FindIntersection(double u0, double u1, double v0, double v1, out double start, out double end)
     {
         start = 0;
         end = 0;
@@ -89,33 +88,33 @@ internal static class PolygonUtilities
     /// - Returns 1 if the segments intersect at a single point.
     /// - Returns 2 if the segments overlap.
     /// </returns>
-    public static int FindIntersection(Segment seg0, Segment seg1, out Vector2 pi0, out Vector2 pi1)
+    public static int FindIntersection(Segment seg0, Segment seg1, out Vertex pi0, out Vertex pi1)
     {
         pi0 = default;
         pi1 = default;
 
-        Vector2 p0 = seg0.Source;
-        Vector2 d0 = seg0.Target - p0;
-        Vector2 p1 = seg1.Source;
-        Vector2 d1 = seg1.Target - p1;
+        Vertex p0 = seg0.Source;
+        Vertex d0 = seg0.Target - p0;
+        Vertex p1 = seg1.Source;
+        Vertex d1 = seg1.Target - p1;
 
-        const float sqrEpsilon = 0.00001F; // Threshold for floating-point precision
-        Vector2 e = p1 - p0;
-        float kross = (d0.X * d1.Y) - (d0.Y * d1.X);
-        float sqrKross = kross * kross;
-        float sqrLen0 = Vector2.Dot(d0, d0);
-        float sqrLen1 = Vector2.Dot(d1, d1);
+        const double sqrEpsilon = 0.0000001; // Threshold for doubleing-point precision
+        Vertex e = p1 - p0;
+        double kross = (d0.X * d1.Y) - (d0.Y * d1.X);
+        double sqrKross = kross * kross;
+        double sqrLen0 = Vertex.Dot(d0, d0);
+        double sqrLen1 = Vertex.Dot(d1, d1);
 
         if (sqrKross > sqrEpsilon * sqrLen0 * sqrLen1)
         {
             // Lines of the segments are not parallel
-            float s = ((e.X * d1.Y) - (e.Y * d1.X)) / kross;
+            double s = ((e.X * d1.Y) - (e.Y * d1.X)) / kross;
             if (s is < 0 or > 1)
             {
                 return 0;
             }
 
-            float t = ((e.X * d0.Y) - (e.Y * d0.X)) / kross;
+            double t = ((e.X * d0.Y) - (e.Y * d0.X)) / kross;
             if (t is < 0 or > 1)
             {
                 return 0;
@@ -129,7 +128,7 @@ internal static class PolygonUtilities
         }
 
         // Lines of the segments are parallel
-        float sqrLenE = (e.X * e.X) + (e.Y * e.Y);
+        double sqrLenE = (e.X * e.X) + (e.Y * e.Y);
         kross = (e.X * d0.Y) - (e.Y * d0.X);
         sqrKross = kross * kross;
         if (sqrKross > sqrEpsilon * sqrLen0 * sqrLenE)
@@ -139,20 +138,20 @@ internal static class PolygonUtilities
         }
 
         // Lines of the segments are the same. Need to test for overlap of segments.
-        float s0 = Vector2.Dot(d0, e) / sqrLen0; // so = Dot (D0, E) * sqrLen0
-        float s1 = s0 + (Vector2.Dot(d0, d1) / sqrLen0); // s1 = s0 + Dot (D0, D1) * sqrLen0
-        float smin = Math.Min(s0, s1);
-        float smax = Math.Max(s0, s1);
-        int imax = FindIntersection(0F, 1F, smin, smax, out float w0, out float w1);
+        double s0 = Vertex.Dot(d0, e) / sqrLen0; // so = Dot (D0, E) * sqrLen0
+        double s1 = s0 + (Vertex.Dot(d0, d1) / sqrLen0); // s1 = s0 + Dot (D0, D1) * sqrLen0
+        double smin = Math.Min(s0, s1);
+        double smax = Math.Max(s0, s1);
+        int imax = FindIntersection(0F, 1F, smin, smax, out double w0, out double w1);
 
         if (imax > 0)
         {
-            pi0 = new Vector2(p0.X + (w0 * d0.X), p0.Y + (w0 * d0.Y));
+            pi0 = new Vertex(p0.X + (w0 * d0.X), p0.Y + (w0 * d0.Y));
             SnapToSegmentEndpoint(ref pi0, seg0);
             SnapToSegmentEndpoint(ref pi0, seg1);
             if (imax > 1)
             {
-                pi1 = new Vector2(p0.X + (w1 * d0.X), p0.Y + (w1 * d0.Y));
+                pi1 = new Vertex(p0.X + (w1 * d0.X), p0.Y + (w1 * d0.Y));
             }
         }
 
@@ -165,15 +164,15 @@ internal static class PolygonUtilities
     /// <param name="point">The point to snap.</param>
     /// <param name="segment">The segment to check.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void SnapToSegmentEndpoint(ref Vector2 point, Segment segment)
+    private static void SnapToSegmentEndpoint(ref Vertex point, Segment segment)
     {
-        const float threshold = 0.00001F;
+        const double threshold = 0.00000001;
 
-        if (Vector2.Distance(point, segment.Source) < threshold)
+        if (Vertex.Distance(point, segment.Source) < threshold)
         {
             point = segment.Source;
         }
-        else if (Vector2.Distance(point, segment.Target) < threshold)
+        else if (Vertex.Distance(point, segment.Target) < threshold)
         {
             point = segment.Target;
         }
