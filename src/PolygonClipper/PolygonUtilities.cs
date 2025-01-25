@@ -98,7 +98,7 @@ internal static class PolygonUtilities
         Vertex p1 = seg1.Source;
         Vertex d1 = seg1.Target - p1;
 
-        const double sqrEpsilon = 0.0000001; // Threshold for doubleing-point precision
+        const double sqrEpsilon = 0.0000001; // Threshold for comparing-point precision
         Vertex e = p1 - p0;
         double kross = (d0.X * d1.Y) - (d0.Y * d1.X);
         double sqrKross = kross * kross;

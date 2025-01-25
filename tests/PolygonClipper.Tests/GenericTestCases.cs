@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using GeoJSON.Text;
 using GeoJSON.Text.Feature;
 using GeoJSON.Text.Geometry;
@@ -70,7 +69,7 @@ public class GenericTestCases
                 Contour contour = new();
                 foreach (IPosition xy in ring.Coordinates)
                 {
-                    contour.AddVertex(new Vertex((float)xy.Longitude, (float)xy.Latitude));
+                    contour.AddVertex(new Vertex(xy.Longitude, xy.Latitude));
                 }
                 polygon.Push(contour);
             }
@@ -88,7 +87,7 @@ public class GenericTestCases
                     Contour contour = new();
                     foreach (IPosition xy in ring.Coordinates)
                     {
-                        contour.AddVertex(new Vertex((float)xy.Longitude, (float)xy.Latitude));
+                        contour.AddVertex(new Vertex(xy.Longitude, xy.Latitude));
                     }
                     polygon.Push(contour);
                 }

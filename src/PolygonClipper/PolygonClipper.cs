@@ -120,7 +120,7 @@ public class PolygonClipper
         }
 
         // Process all segments in the subject polygon
-        StablePriorityQueue<SweepEvent> eventQueue = new(new SweepEventComparer());
+        StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue = new(new SweepEventComparer());
         int contourId = 0;
         for (int i = 0; i < subject.ContourCount; i++)
         {
@@ -146,7 +146,7 @@ public class PolygonClipper
         // Sweep line algorithm: process events in the priority queue
         List<SweepEvent> sortedEvents = [];
         StatusLine statusLine = new();
-        SweepEventComparer comparer = (SweepEventComparer)eventQueue.Comparer;
+        SweepEventComparer comparer = eventQueue.Comparer;
         double subjectMaxX = subjectBB.Max.X;
         double minMaxX = Vertex.Max(subjectBB.Max, clippingBB.Max).X;
 
@@ -315,7 +315,7 @@ public class PolygonClipper
         int contourId,
         Segment s,
         PolygonType pt,
-        StablePriorityQueue<SweepEvent> eventQueue,
+        StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue,
         int id)
     {
         if (s.Source == s.Target)
@@ -499,7 +499,7 @@ public class PolygonClipper
     private static int PossibleIntersection(
         SweepEvent le1,
         SweepEvent le2,
-        StablePriorityQueue<SweepEvent> eventQueue)
+        StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue)
     {
         // Point intersections
         int nIntersections = PolygonUtilities.FindIntersection(
@@ -527,7 +527,7 @@ public class PolygonClipper
             return 0;
         }
 
-        SweepEventComparer comparer = (SweepEventComparer)eventQueue.Comparer;
+        SweepEventComparer comparer = eventQueue.Comparer;
 
         // The line segments associated with le1 and le2 intersect
         if (nIntersections == 1)
@@ -629,7 +629,7 @@ public class PolygonClipper
     private static void DivideSegment(
         SweepEvent le,
         Vertex p,
-        StablePriorityQueue<SweepEvent> eventQueue,
+        StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue,
         SweepEventComparer comparer)
     {
         // Create the right event for the left segment (result of division)
