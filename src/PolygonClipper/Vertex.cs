@@ -16,6 +16,16 @@ public readonly struct Vertex : IEquatable<Vertex>
     /// <summary>
     /// Initializes a new instance of the <see cref="Vertex"/> struct.
     /// </summary>
+    /// <param name="xy">The X and Y coordinates of the vertex.</param>
+    public Vertex(double xy)
+    {
+        this.X = xy;
+        this.Y = xy;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Vertex"/> struct.
+    /// </summary>
     /// <param name="x">The X-coordinate of the vertex.</param>
     /// <param name="y">The Y-coordinate of the vertex.</param>
     public Vertex(double x, double y)

@@ -109,17 +109,17 @@ public class PolygonClipper
         // Compute bounding boxes for optimization steps 1 and 2
         Polygon subject = this.subject;
         Polygon clipping = this.clipping;
-        Box2 subjectBB = this.subject.GetBoundingBox();
-        Box2 clippingBB = this.clipping.GetBoundingBox();
         BooleanOperation operation = this.operation;
 
         // Check for trivial cases that can be resolved without sweeping
-        if (TryTrivialOperation(subject, clipping, subjectBB, clippingBB, operation, out Polygon? result))
+        if (TryTrivialOperationForEmptyPolygons(subject, clipping, operation, out Polygon? result))
         {
             return result;
         }
 
         // Process all segments in the subject polygon
+        Vertex min = new(double.PositiveInfinity);
+        Vertex max = new(double.NegativeInfinity);
         StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue = new(new SweepEventComparer());
         int contourId = 0;
         for (int i = 0; i < subject.ContourCount; i++)
@@ -128,19 +128,29 @@ public class PolygonClipper
             contourId++;
             for (int j = 0; j < contour.VertexCount - 1; j++)
             {
-                ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject, eventQueue, j);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Subject, eventQueue, ref min, ref max);
             }
         }
 
+        Box2 subjectBB = new(min, max);
+
         // Process all segments in the clipping polygon
+        min = new Vertex(double.PositiveInfinity);
+        max = new Vertex(double.NegativeInfinity);
         for (int i = 0; i < clipping.ContourCount; i++)
         {
             Contour contour = clipping[i];
             contourId++;
             for (int j = 0; j < contour.VertexCount - 1; j++)
             {
-                ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue, j);
+                ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue, ref min, ref max);
             }
+        }
+
+        Box2 clippingBB = new(min, max);
+        if (TryTrivialOperationForNonOverlappingBoundingBoxes(subject, clipping, subjectBB, clippingBB, operation, out result))
+        {
+            return result;
         }
 
         // Sweep line algorithm: process events in the priority queue
@@ -166,11 +176,6 @@ public class PolygonClipper
 
             sortedEvents.Add(sweepEvent);
             ii++;
-
-            if (ii == 4)
-            {
-                Debug.WriteLine("First Diff");
-            }
 
             if (sweepEvent.Left)
             {
@@ -230,45 +235,33 @@ public class PolygonClipper
     }
 
     /// <summary>
-    /// Checks for trivial cases in a boolean operation where the result can be determined
-    /// without further processing.
+    /// Checks if the boolean operation is trivial due to one polygon having zero contours
+    /// and sets the result accordingly.
     /// </summary>
     /// <param name="subject">The subject polygon.</param>
     /// <param name="clipping">The clipping polygon.</param>
-    /// <param name="subjectBB">The bounding box of the subject polygon.</param>
-    /// <param name="clippingBB">The bounding box of the clipping polygon.</param>
     /// <param name="operation">The boolean operation being performed.</param>
     /// <param name="result">The resulting polygon if the operation is trivial.</param>
     /// <returns>
-    /// <see langword="true"/> if the operation results in a trivial case and the result is set;
+    /// <see langword="true"/> if the operation results in a trivial case due to zero contours; 
     /// otherwise, <see langword="false"/>.
     /// </returns>
-    /// <remarks>
-    /// This method performs two tests:
-    /// <list type="number">
-    /// <item>
-    /// <description>Test 1: If either the subject or clipping polygon has zero contours, the result can
-    /// be determined immediately based on the operation type.</description>
-    /// </item>
-    /// <item>
-    /// <description>Test 2: If the bounding boxes of the subject and clipping polygons do not overlap,
-    /// the result can be determined based on the operation type.</description>
-    /// </item>
-    /// </list>
-    /// </remarks>
-    private static bool TryTrivialOperation(
+    private static bool TryTrivialOperationForEmptyPolygons(
         Polygon subject,
         Polygon clipping,
-        Box2 subjectBB,
-        Box2 clippingBB,
         BooleanOperation operation,
         [NotNullWhen(true)] out Polygon? result)
     {
         result = null;
 
-        // Test 1 for trivial result case.
         if (subject.ContourCount * clipping.ContourCount == 0)
         {
+            if (operation == BooleanOperation.Intersection)
+            {
+                result = new();
+                return true;
+            }
+
             if (operation == BooleanOperation.Difference)
             {
                 result = subject;
@@ -282,10 +275,42 @@ public class PolygonClipper
             }
         }
 
-        // Test 2 for trivial result case.
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if the boolean operation is trivial due to non-overlapping bounding boxes
+    /// and sets the result accordingly.
+    /// </summary>
+    /// <param name="subject">The subject polygon.</param>
+    /// <param name="clipping">The clipping polygon.</param>
+    /// <param name="subjectBB">The bounding box of the subject polygon.</param>
+    /// <param name="clippingBB">The bounding box of the clipping polygon.</param>
+    /// <param name="operation">The boolean operation being performed.</param>
+    /// <param name="result">The resulting polygon if the operation is trivial.</param>
+    /// <returns>
+    /// <see langword="true"/> if the operation results in a trivial case due to non-overlapping
+    /// bounding boxes; otherwise, <see langword="false"/>.
+    /// </returns>
+    private static bool TryTrivialOperationForNonOverlappingBoundingBoxes(
+        Polygon subject,
+        Polygon clipping,
+        Box2 subjectBB,
+        Box2 clippingBB,
+        BooleanOperation operation,
+        [NotNullWhen(true)] out Polygon? result)
+    {
+        result = null;
+
         if (subjectBB.Min.X > clippingBB.Max.X || clippingBB.Min.X > subjectBB.Max.X ||
             subjectBB.Min.Y > clippingBB.Max.Y || clippingBB.Min.Y > subjectBB.Max.Y)
         {
+            if (operation == BooleanOperation.Intersection)
+            {
+                result = new();
+                return true;
+            }
+
             // The bounding boxes do not overlap
             if (operation == BooleanOperation.Difference)
             {
@@ -311,12 +336,15 @@ public class PolygonClipper
     /// <param name="s">The segment to process.</param>
     /// <param name="pt">The polygon type to which the segment belongs.</param>
     /// <param name="eventQueue">The event queue to add the generated events to.</param>
+    /// <param name="min">The minimum vertex of the bounding box.</param>
+    /// <param name="max">The maximum vertex of the bounding box.</param>
     private static void ProcessSegment(
         int contourId,
         Segment s,
         PolygonType pt,
         StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue,
-        int id)
+        ref Vertex min,
+        ref Vertex max)
     {
         if (s.Source == s.Target)
         {
@@ -351,6 +379,9 @@ public class PolygonClipper
                 e1.Left = false;
             }
         }
+
+        min = Vertex.Min(min, s.Min);
+        max = Vertex.Max(max, s.Max);
 
         // Add the events to the event queue
         eventQueue.Enqueue(e1);
