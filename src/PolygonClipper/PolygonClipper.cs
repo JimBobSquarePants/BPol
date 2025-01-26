@@ -158,7 +158,7 @@ public class PolygonClipper
         StatusLine statusLine = new();
         SweepEventComparer comparer = eventQueue.Comparer;
         double subjectMaxX = subjectBB.Max.X;
-        double minMaxX = Vertex.Max(subjectBB.Max, clippingBB.Max).X;
+        double minMaxX = Vertex.Min(subjectBB.Max, clippingBB.Max).X;
 
         SweepEvent? prevEvent;
         SweepEvent? nextEvent;
@@ -167,15 +167,15 @@ public class PolygonClipper
         {
             SweepEvent sweepEvent = eventQueue.Dequeue();
 
+            sortedEvents.Add(sweepEvent);
+            ii++;
+
             // Optimization: skip further processing if intersection is impossible
             if ((operation == BooleanOperation.Intersection && sweepEvent.Point.X > minMaxX) ||
                 (operation == BooleanOperation.Difference && sweepEvent.Point.X > subjectMaxX))
             {
                 return ConnectEdges(sortedEvents, comparer);
             }
-
-            sortedEvents.Add(sweepEvent);
-            ii++;
 
             if (sweepEvent.Left)
             {
