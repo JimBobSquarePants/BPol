@@ -94,64 +94,63 @@ internal static class PolygonUtilities
         pi1 = default;
 
         Vertex p0 = seg0.Source;
-        Vertex d0 = seg0.Target - p0;
         Vertex p1 = seg1.Source;
-        Vertex d1 = seg1.Target - p1;
+
+        Vertex va = seg0.Target - p0;
+        Vertex vb = seg1.Target - p1;
 
         const double sqrEpsilon = 0.0000001; // Threshold for comparing-point precision
         Vertex e = p1 - p0;
-        double kross = (d0.X * d1.Y) - (d0.Y * d1.X);
+        double kross = Vertex.Cross(va, vb);
         double sqrKross = kross * kross;
-        double sqrLen0 = Vertex.Dot(d0, d0);
-        double sqrLen1 = Vertex.Dot(d1, d1);
+        double sqrLenA = Vertex.Dot(va, va);
+        // double sqrLen1 = Vertex.Dot(vb, vb);
 
-        if (sqrKross > sqrEpsilon * sqrLen0 * sqrLen1)
+        if (sqrKross > 0)
         {
             // Lines of the segments are not parallel
-            double s = ((e.X * d1.Y) - (e.Y * d1.X)) / kross;
+            double s = Vertex.Cross(e, vb) / kross;
             if (s is < 0 or > 1)
             {
                 return 0;
             }
 
-            double t = ((e.X * d0.Y) - (e.Y * d0.X)) / kross;
+            double t = Vertex.Cross(e, va) / kross;
             if (t is < 0 or > 1)
             {
                 return 0;
             }
 
             // Intersection of lines is a point on each segment
-            pi0 = p0 + (s * d0);
-            SnapToSegmentEndpoint(ref pi0, seg0);
-            SnapToSegmentEndpoint(ref pi0, seg1);
+            pi0 = p0 + (s * va);
             return 1;
         }
 
         // Lines of the segments are parallel
-        double sqrLenE = (e.X * e.X) + (e.Y * e.Y);
-        kross = (e.X * d0.Y) - (e.Y * d0.X);
+        // double sqrLenE = (e.X * e.X) + (e.Y * e.Y);
+        kross = (e.X * va.Y) - (e.Y * va.X);
         sqrKross = kross * kross;
-        if (sqrKross > sqrEpsilon * sqrLen0 * sqrLenE)
+        if (sqrKross > 0)
         {
             // Lines of the segments are different
             return 0;
         }
 
         // Lines of the segments are the same. Need to test for overlap of segments.
-        double s0 = Vertex.Dot(d0, e) / sqrLen0; // so = Dot (D0, E) * sqrLen0
-        double s1 = s0 + (Vertex.Dot(d0, d1) / sqrLen0); // s1 = s0 + Dot (D0, D1) * sqrLen0
+        double s0 = Vertex.Dot(va, e) / sqrLenA; // so = Dot (D0, E) * sqrLen0
+        double s1 = s0 + (Vertex.Dot(va, vb) / sqrLenA); // s1 = s0 + Dot (D0, D1) * sqrLen0
         double smin = Math.Min(s0, s1);
         double smax = Math.Max(s0, s1);
         int imax = FindIntersection(0F, 1F, smin, smax, out double w0, out double w1);
 
         if (imax > 0)
         {
-            pi0 = new Vertex(p0.X + (w0 * d0.X), p0.Y + (w0 * d0.Y));
+            pi0 = new Vertex(p0.X + (w0 * va.X), p0.Y + (w0 * va.Y));
             SnapToSegmentEndpoint(ref pi0, seg0);
             SnapToSegmentEndpoint(ref pi0, seg1);
             if (imax > 1)
             {
-                pi1 = new Vertex(p0.X + (w1 * d0.X), p0.Y + (w1 * d0.Y));
+                pi1 = new Vertex(p0.X + (w1 * va.X), p0.Y + (w1 * va.Y));
             }
         }
 
