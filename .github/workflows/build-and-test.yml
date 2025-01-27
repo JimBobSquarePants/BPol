@@ -1,0 +1,125 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [ labeled, opened, synchronize, reopened ]
+jobs:
+  Build:
+    strategy:
+      matrix: options:
+          - os: ubuntu-latest
+            framework: net9.0
+            sdk: 9.0.x
+            sdk-preview: true
+            runtime: -x64
+            codecov: false
+          - os: macos-latest # macos-latest runs on arm64 runners where libgdiplus is unavailable
+            framework: net9.0
+            sdk: 9.0.x
+            sdk-preview: true
+            runtime: -x64
+            codecov: false
+          - os: windows-latest
+            framework: net9.0
+            sdk: 9.0.x
+            sdk-preview: true
+            runtime: -x64
+            codecov: false
+
+          - os: ubuntu-latest
+            framework: net8.0
+            sdk: 8.0.x
+            runtime: -x64
+            codecov: false
+          - os: macos-latest # macos-latest runs on arm64 runners where libgdiplus is unavailable
+            framework: net8.0
+            sdk: 8.0.x
+            runtime: -x64
+            codecov: false
+          - os: windows-latest
+            framework: net8.0
+            sdk: 8.0.x
+            runtime: -x64
+            codecov: false
+
+    runs-on: ${{matrix.options.os}}
+
+    steps:
+      - name: Git Config
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.longpaths true
+
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: NuGet Install
+        uses: NuGet/setup-nuget@v2
+
+      - name: NuGet Setup Cache
+        uses: actions/cache@v4
+        id: nuget-cache
+        with:
+          path: ~/.nuget
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: DotNet Setup
+        if: ${{ matrix.options.sdk-preview != true }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+
+      - name: DotNet Setup Preview
+        if: ${{ matrix.options.sdk-preview == true }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+
+      - name: DotNet Build
+        if: ${{ matrix.options.sdk-preview != true }}
+        shell: pwsh
+        run: ./ci-build.ps1 "${{matrix.options.framework}}"
+        env:
+          SIXLABORS_TESTING: True
+
+      - name: DotNet Build Preview
+        if: ${{ matrix.options.sdk-preview == true }}
+        shell: pwsh
+        run: ./ci-build.ps1 "${{matrix.options.framework}}"
+        env:
+          SIXLABORS_TESTING_PREVIEW: True
+
+      - name: DotNet Test
+        if: ${{ matrix.options.sdk-preview != true }}
+        shell: pwsh
+        run: ./ci-test.ps1 "${{matrix.options.os}}" "${{matrix.options.framework}}" "${{matrix.options.runtime}}" "${{matrix.options.codecov}}"
+        env:
+          SIXLABORS_TESTING: True
+          XUNIT_PATH: .\tests\ImageSharp.Tests # Required for xunit
+
+      - name: DotNet Test Preview
+        if: ${{ matrix.options.sdk-preview == true }}
+        shell: pwsh
+        run: ./ci-test.ps1 "${{matrix.options.os}}" "${{matrix.options.framework}}" "${{matrix.options.runtime}}" "${{matrix.options.codecov}}"
+        env:
+          SIXLABORS_TESTING_PREVIEW: True
+          XUNIT_PATH: .\tests\ImageSharp.Tests # Required for xunit
+
+      - name: Export Failed Output
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: actual_output_${{ runner.os }}_${{ matrix.options.framework }}${{ matrix.options.runtime }}.zip
+          path: tests/Images/ActualOutput/
