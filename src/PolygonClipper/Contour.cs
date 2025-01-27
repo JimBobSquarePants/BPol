@@ -180,7 +180,7 @@ public sealed class Contour
     /// </summary>
     /// <param name="x">The x-coordinate offset.</param>
     /// <param name="y">The y-coordinate offset.</param>
-    public void Offset(float x, float y)
+    public void Offset(double x, double y)
     {
         List<Vertex> points = this.points;
         for (int i = 0; i < points.Count; i++)

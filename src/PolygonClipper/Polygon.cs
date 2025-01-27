@@ -97,7 +97,7 @@ public sealed class Polygon
     /// </summary>
     /// <param name="x">The x-coordinate offset.</param>
     /// <param name="y">The y-coordinate offset.</param>
-    public void Offset(float x, float y)
+    public void Offset(double x, double y)
     {
         for (int i = 0; i < this.contours.Count; i++)
         {

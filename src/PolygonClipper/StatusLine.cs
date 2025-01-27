@@ -26,7 +26,7 @@ namespace PolygonClipper;
 [DebuggerDisplay("Count = {Count}")]
 internal sealed class StatusLine
 {
-    private readonly List<SweepEvent> sortedEvents = new();
+    private readonly List<SweepEvent> sortedEvents = [];
     private readonly SegmentComparer comparer = new();
 
     /// <summary>
