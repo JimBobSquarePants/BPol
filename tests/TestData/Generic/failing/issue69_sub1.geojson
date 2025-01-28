@@ -66,9 +66,7 @@
         ],
         "type": "MultiPolygon"
       },
-      "properties": {
-        "operation": "union"
-      },
+      "properties": {"operation": "union"},
       "type": "Feature"
     }
   ],

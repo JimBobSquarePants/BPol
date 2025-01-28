@@ -2011,9 +2011,7 @@
         ],
         "type": "MultiPolygon"
       },
-      "properties": {
-        "operation": "intersection"
-      },
+      "properties": {"operation": "intersection"},
       "type": "Feature"
     }
   ],
