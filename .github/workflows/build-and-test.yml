@@ -11,7 +11,14 @@ on:
 jobs:
   Build:
     strategy:
-      matrix: options:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        framework: [net8.0]
+        sdk: [8.0.x]
+        runtime: [-x64]
+        codecov: [false]
+        
+        include:
           - os: ubuntu-latest
             framework: net9.0
             sdk: 9.0.x
@@ -28,22 +35,6 @@ jobs:
             framework: net9.0
             sdk: 9.0.x
             sdk-preview: true
-            runtime: -x64
-            codecov: false
-
-          - os: ubuntu-latest
-            framework: net8.0
-            sdk: 8.0.x
-            runtime: -x64
-            codecov: false
-          - os: macos-latest # macos-latest runs on arm64 runners where libgdiplus is unavailable
-            framework: net8.0
-            sdk: 8.0.x
-            runtime: -x64
-            codecov: false
-          - os: windows-latest
-            framework: net8.0
-            sdk: 8.0.x
             runtime: -x64
             codecov: false
 
