@@ -128,7 +128,7 @@ internal static class PolygonUtilities
 
         // Lines of the segments are parallel
         // double sqrLenE = (e.X * e.X) + (e.Y * e.Y);
-        kross = (e.X * va.Y) - (e.Y * va.X);
+        kross = Vertex.Cross(e, va);
         sqrKross = kross * kross;
         if (sqrKross > 0)
         {
