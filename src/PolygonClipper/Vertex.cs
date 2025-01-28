@@ -209,7 +209,7 @@ public readonly struct Vertex : IEquatable<Vertex>
 
     /// <inheritdoc/>
     public bool Equals(Vertex other)
-        => Math.Abs(this.X - other.X) < 0.00000000000001 && Math.Abs(this.Y - other.Y) < 0.00000000000001;
+        => this.X == other.X && this.Y == other.Y;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) =>

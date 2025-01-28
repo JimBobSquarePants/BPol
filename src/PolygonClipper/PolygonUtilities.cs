@@ -121,6 +121,20 @@ internal static class PolygonUtilities
                 return 0;
             }
 
+            if (s == 0 || s == 1)
+            {
+                // on an endpoint of line segment a
+                pi0 = p0 + (s * va);
+                return 1;
+            }
+
+            if (t == 0 || t == 1)
+            {
+                // on an endpoint of line segment b
+                pi0 = p1 + (t * vb);
+                return 1;
+            }
+
             // Intersection of lines is a point on each segment
             pi0 = p0 + (s * va);
             return 1;
