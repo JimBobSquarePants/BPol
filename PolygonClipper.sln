@@ -30,6 +30,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\code-coverage.yml = .github\workflows\code-coverage.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonClipper.Benchmarks", "tests\PolygonClipper.Benchmarks\PolygonClipper.Benchmarks.csproj", "{F1965B36-D896-4BC1-8941-7FE6CEB82CD5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{6997B09A-A419-4469-A51C-D21973E4F800}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6997B09A-A419-4469-A51C-D21973E4F800}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6997B09A-A419-4469-A51C-D21973E4F800}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1965B36-D896-4BC1-8941-7FE6CEB82CD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1965B36-D896-4BC1-8941-7FE6CEB82CD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1965B36-D896-4BC1-8941-7FE6CEB82CD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1965B36-D896-4BC1-8941-7FE6CEB82CD5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,6 +59,7 @@ Global
 		{6997B09A-A419-4469-A51C-D21973E4F800} = {84C4B358-492B-46FC-9F11-FBB76B06BD3F}
 		{6F7A3AE6-C7D1-441F-A203-BA6575931CE2} = {6B327CDE-88A5-4715-A8A3-E9A8C80EA10C}
 		{EEA3B5E9-3337-42EE-B0BF-FA586A1BC435} = {6F7A3AE6-C7D1-441F-A203-BA6575931CE2}
+		{F1965B36-D896-4BC1-8941-7FE6CEB82CD5} = {84C4B358-492B-46FC-9F11-FBB76B06BD3F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2C73BEEC-091B-45E4-A0BD-7D7CD16A8451}
