@@ -532,6 +532,12 @@ public class PolygonClipper
         SweepEvent le2,
         StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue)
     {
+        if (le1.OtherEvent == null || le2.OtherEvent == null)
+        {
+            // No intersection possible.
+            return 0;
+        }
+
         // Point intersections
         int nIntersections = PolygonUtilities.FindIntersection(
             le1.Segment(),
@@ -545,6 +551,7 @@ public class PolygonClipper
             return 0;
         }
 
+        // Ignore intersection if it occurs at the exact left or right endpoint of both segments
         if (nIntersections == 1 &&
             (le1.Point == le2.Point || le1.OtherEvent.Point == le2.OtherEvent.Point))
         {
@@ -552,15 +559,14 @@ public class PolygonClipper
             return 0;
         }
 
+        // If segments overlap and belong to the same polygon, ignore them
         if (nIntersections == 2 && le1.PolygonType == le2.PolygonType)
         {
-            // Line segments overlap but belong to the same polygon
             return 0;
         }
 
+        // Handle a single intersection point
         SweepEventComparer comparer = eventQueue.Comparer;
-
-        // The line segments associated with le1 and le2 intersect
         if (nIntersections == 1)
         {
             // If the intersection point is not an endpoint of le1 segment.
@@ -613,8 +619,8 @@ public class PolygonClipper
             }
         }
 
-        // Handle leftCoincide and rightCoincide cases
-        if ((leftCoincide && rightCoincide) || leftCoincide)
+        // Handle leftCoincide case
+        if (leftCoincide)
         {
             le2.EdgeType = EdgeType.NonContributing;
             le1.EdgeType = (le2.InOut == le1.InOut)
@@ -636,7 +642,7 @@ public class PolygonClipper
             return 3;
         }
 
-        // Handle overlapping segments
+        // Handle general overlapping case
         if (events[0] != events[3].OtherEvent)
         {
             DivideSegment(events[0], events[1].Point, eventQueue, comparer);
@@ -644,7 +650,7 @@ public class PolygonClipper
             return 3;
         }
 
-        // Handle one segment fully containing the other
+        // One segment fully contains the other
         DivideSegment(events[0], events[1].Point, eventQueue, comparer);
         DivideSegment(events[3].OtherEvent, events[2].Point, eventQueue, comparer);
         return 3;
@@ -663,35 +669,98 @@ public class PolygonClipper
         StablePriorityQueue<SweepEvent, SweepEventComparer> eventQueue,
         SweepEventComparer comparer)
     {
-        // Create the right event for the left segment (result of division)
+        if (le.OtherEvent == null)
+        {
+            return;
+        }
+
+        SweepEvent re = le.OtherEvent;
+
+        // The idea is to divide the segment based on the given `inter` coordinate as follows:
+        //
+        //     (se_l)--------(r)(l)--------(re)
+        //
+        // Under normal circumstances the resulting events satisfy the conditions:
+        //
+        //     se_l is before r, and l is before re.
+        //
+        // Since the intersection point computation is bounded to the interval [se_l.x, re.x]
+        // it is impossible for r/l to fall outside the interval. This leaves the corner cases:
+        //
+        //  1. r.x == se_l.x and r.y < se_l.y: This corresponds to the case where the first
+        //     sub-segment becomes a perfectly vertical line. The problem is that vertical
+        //     segments always have to be processed from bottom to top consistency. The
+        //     theoretically correct event order would be r first (bottom), se_l later (top).
+        //     However, se_l is the event just being processed, so there is no (easy) way of
+        //     processing r before se_l. The easiest solution to the problem is to avoid it,
+        //     by incrementing inter.x by one ULP.
+        //  2. l.x == re.x and l.y > re.y: This corresponds to the case where the second
+        //     sub-segment becomes a perfectly vertical line, and because of the bottom-to-top
+        //     convention for vertical segment, the order of l and re must be swapped.
+        //     In this case swapping is not a problem, because both events are in the future.
+        //
+        // See also: https://github.com/21re/rust-geo-booleanop/pull/11
+
+        // Prevent from corner case 1
+        if (p.X == le.Point.X && p.Y < le.Point.Y)
+        {
+            // TODO: enabling this line makes a single test issue76.geojson fail.
+            // The files are different in the two reference repositories but both fail.
+            // p = new Vertex(NextAfter(p.X, true), p.Y);
+        }
+
+        // Create the right event for the left segment (new right endpoint)
         SweepEvent r = new(p, false, le, le.PolygonType);
 
-        // Create the left event for the right segment (result of division)
-        SweepEvent l = new(p, true, le.OtherEvent, le.PolygonType);
+        // Create the left event for the right segment (new left endpoint)
+        SweepEvent l = new(p, true, re, le.PolygonType);
 
-        // Assign the same contour id to the new events for sorting.
+        // Assign the same contour ID to maintain connectivity
         r.ContourId = l.ContourId = le.ContourId;
 
-        // Avoid rounding error: ensure the left event is processed before the right event
-        if (comparer.Compare(l, le.OtherEvent) > 0)
+        // Corner case 2 can be accounted for by swapping l / se_r
+        if (comparer.Compare(l, re) > 0)
         {
             Debug.WriteLine("Rounding error detected: Adjusting left/right flags for event ordering.");
-            le.OtherEvent.Left = true;
+            re.Left = true;
             l.Left = false;
         }
 
-        if (comparer.Compare(le, r) > 0)
-        {
-            Debug.WriteLine("Rounding error detected: Event ordering issue for right event.");
-        }
-
         // Update references to maintain correct linkage
-        le.OtherEvent.OtherEvent = l;
+        re.OtherEvent = l;
         le.OtherEvent = r;
 
         // Add the new events to the event queue
         eventQueue.Enqueue(l);
         eventQueue.Enqueue(r);
+    }
+
+    /// <summary>
+    /// Returns the next representable double-precision floating-point value in the given direction.
+    /// <see href="https://docs.rs/float_next_after/latest/float_next_after/trait.NextAfter.html"/>
+    /// </summary>
+    /// <param name="x">The starting double value.</param>
+    /// <param name="up">If true, moves towards positive infinity; otherwise, towards negative infinity.</param>
+    /// <returns>The next representable double in the given direction.</returns>
+    private static double NextAfter(double x, bool up)
+    {
+        if (double.IsNaN(x) || x == double.PositiveInfinity || x == double.NegativeInfinity)
+        {
+            return x; // NaN and infinity stay the same
+        }
+
+        // Convert double to its IEEE 754 bit representation
+        long bits = BitConverter.DoubleToInt64Bits(x);
+        if (up)
+        {
+            bits += (bits >= 0) ? 1 : -1; // Increase magnitude
+        }
+        else
+        {
+            bits += (bits > 0) ? -1 : 1; // Decrease magnitude
+        }
+
+        return BitConverter.Int64BitsToDouble(bits);
     }
 
     /// <summary>
