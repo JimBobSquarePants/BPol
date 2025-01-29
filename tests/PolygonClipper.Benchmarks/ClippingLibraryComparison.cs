@@ -44,11 +44,7 @@ public class ClippingLibraryComparison
         ClipperD clipper2 = new();
         clipper2.AddSubject(this.subject2);
         clipper2.AddClip(this.clipping2);
-        bool x = clipper2.Execute(ClipType.Union, FillRule.EvenOdd, solution);
-        if (!x)
-        {
-            throw new InvalidOperationException("Failed to clip polygons.");
-        }
+        clipper2.Execute(ClipType.Union, FillRule.Positive, solution);
         return solution;
     }
 

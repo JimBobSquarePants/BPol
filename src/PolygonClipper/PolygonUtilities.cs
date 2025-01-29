@@ -2,6 +2,7 @@
 // Licensed under the Six Labors Split License.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace PolygonClipper;
@@ -20,54 +21,41 @@ internal static class PolygonUtilities
         => ((p0.X - p2.X) * (p1.Y - p2.Y)) - ((p1.X - p2.X) * (p0.Y - p2.Y));
 
     /// <summary>
-    /// Finds the intersection between two intervals [u0, u1] and [v0, v1].
+    /// Finds the intersection of two line segments, constraining results to their intersection bounding box.
     /// </summary>
-    /// <param name="u0">The start of the first interval.</param>
-    /// <param name="u1">The end of the first interval.</param>
-    /// <param name="v0">The start of the second interval.</param>
-    /// <param name="v1">The end of the second interval.</param>
-    /// <param name="start">
-    /// The start of the intersection interval, or the single intersection point if there is only one.
-    /// </param>
-    /// <param name="end">
-    /// The end of the intersection interval. If the intersection is a single point, this value is undefined.
-    /// </param>
+    /// <param name="seg0">The first segment.</param>
+    /// <param name="seg1">The second segment.</param>
+    /// <param name="pi0">The first intersection point.</param>
+    /// <param name="pi1">The second intersection point (if overlap occurs).</param>
     /// <returns>
-    /// An <see cref="int"/> indicating the type of intersection:
+    /// An <see cref="int"/> indicating the number of intersection points:
     /// - Returns 0 if there is no intersection.
-    /// - Returns 1 if the intersection is a single point.
-    /// - Returns 2 if the intersection is an interval.
+    /// - Returns 1 if the segments intersect at a single point.
+    /// - Returns 2 if the segments overlap.
     /// </returns>
-    public static int FindIntersection(double u0, double u1, double v0, double v1, out double start, out double end)
+    public static int FindIntersection(Segment seg0, Segment seg1, out Vertex pi0, out Vertex pi1)
     {
-        start = 0;
-        end = 0;
+        pi0 = default;
+        pi1 = default;
 
-        if ((u1 < v0) || (u0 > v1))
+        if (!TryGetIntersectionBoundingBox(seg0.Source, seg0.Target, seg1.Source, seg1.Target, out Box2? bbox))
         {
-            return 0; // No intersection
+            return 0;
         }
 
-        if (u1 > v0)
+        int interResult = FindIntersectionImpl(seg0, seg1, out pi0, out pi1);
+
+        if (interResult == 1)
         {
-            if (u0 < v1)
-            {
-                // There is an overlapping range
-                start = (u0 < v0) ? v0 : u0;
-                end = (u1 > v1) ? v1 : u1;
-                return 2; // Two endpoints defining the intersection range
-            }
-
-            // u0 == v1
-            start = u0;
-
-            return 1; // Single point intersection
+            pi0 = ConstrainToBoundingBox(pi0, bbox.Value);
+        }
+        else if (interResult == 2)
+        {
+            pi0 = ConstrainToBoundingBox(pi0, bbox.Value);
+            pi1 = ConstrainToBoundingBox(pi1, bbox.Value);
         }
 
-        // u1 == v0
-        start = u1;
-
-        return 1; // Single point intersection
+        return interResult;
     }
 
     /// <summary>
@@ -88,60 +76,58 @@ internal static class PolygonUtilities
     /// - Returns 1 if the segments intersect at a single point.
     /// - Returns 2 if the segments overlap.
     /// </returns>
-    public static int FindIntersection(Segment seg0, Segment seg1, out Vertex pi0, out Vertex pi1)
+    private static int FindIntersectionImpl(Segment seg0, Segment seg1, out Vertex pi0, out Vertex pi1)
     {
         pi0 = default;
         pi1 = default;
 
-        Vertex p0 = seg0.Source;
-        Vertex p1 = seg1.Source;
+        Vertex a1 = seg0.Source;
+        Vertex a2 = seg1.Source;
 
-        Vertex va = seg0.Target - p0;
-        Vertex vb = seg1.Target - p1;
+        Vertex va = seg0.Target - a1;
+        Vertex vb = seg1.Target - a2;
+        Vertex e = a2 - a1;
 
-        const double sqrEpsilon = 0.0000001; // Threshold for comparing-point precision
-        Vertex e = p1 - p0;
         double kross = Vertex.Cross(va, vb);
         double sqrKross = kross * kross;
         double sqrLenA = Vertex.Dot(va, va);
-        // double sqrLen1 = Vertex.Dot(vb, vb);
 
         if (sqrKross > 0)
         {
             // Lines of the segments are not parallel
             double s = Vertex.Cross(e, vb) / kross;
-            if (s is < 0 or > 1)
+            if (s < 0 || s > 1)
             {
                 return 0;
             }
 
             double t = Vertex.Cross(e, va) / kross;
-            if (t is < 0 or > 1)
+            if (t < 0 || t > 1)
             {
                 return 0;
             }
 
+            // If s or t is exactly 0 or 1, the intersection is on an endpoint
             if (s == 0 || s == 1)
             {
-                // on an endpoint of line segment a
-                pi0 = p0 + (s * va);
+                // On an endpoint of line segment a
+                pi0 = MidPoint(a1, s, va);
                 return 1;
             }
 
             if (t == 0 || t == 1)
             {
-                // on an endpoint of line segment b
-                pi0 = p1 + (t * vb);
+                // On an endpoint of line segment b
+                pi0 = MidPoint(a2, t, vb);
                 return 1;
             }
 
             // Intersection of lines is a point on each segment
-            pi0 = p0 + (s * va);
+            pi0 = a1 + (s * va);
             return 1;
         }
 
-        // Lines of the segments are parallel
-        // double sqrLenE = (e.X * e.X) + (e.Y * e.Y);
+        // Lines are parallel; check if they are collinear
         kross = Vertex.Cross(e, va);
         sqrKross = kross * kross;
         if (sqrKross > 0)
@@ -150,44 +136,82 @@ internal static class PolygonUtilities
             return 0;
         }
 
-        // Lines of the segments are the same. Need to test for overlap of segments.
-        double s0 = Vertex.Dot(va, e) / sqrLenA; // so = Dot (D0, E) * sqrLen0
-        double s1 = s0 + (Vertex.Dot(va, vb) / sqrLenA); // s1 = s0 + Dot (D0, D1) * sqrLen0
-        double smin = Math.Min(s0, s1);
-        double smax = Math.Max(s0, s1);
-        int imax = FindIntersection(0F, 1F, smin, smax, out double w0, out double w1);
+        // Segments are collinear, check for overlap
+        double sa = Vertex.Dot(va, e) / sqrLenA;
+        double sb = sa + (Vertex.Dot(va, vb) / sqrLenA);
+        double smin = Math.Min(sa, sb);
+        double smax = Math.Max(sa, sb);
 
-        if (imax > 0)
+        if (smin <= 1 && smax >= 0)
         {
-            pi0 = new Vertex(p0.X + (w0 * va.X), p0.Y + (w0 * va.Y));
-            SnapToSegmentEndpoint(ref pi0, seg0);
-            SnapToSegmentEndpoint(ref pi0, seg1);
-            if (imax > 1)
+            if (smin == 1)
             {
-                pi1 = new Vertex(p0.X + (w1 * va.X), p0.Y + (w1 * va.Y));
+                pi0 = MidPoint(a1, smin, va);
+                return 1;
             }
+
+            if (smax == 0)
+            {
+                pi0 = MidPoint(a1, smax, va);
+                return 1;
+            }
+
+            pi0 = MidPoint(a1, Math.Max(smin, 0), va);
+            pi1 = MidPoint(a1, Math.Min(smax, 1), va);
+            return 2;
         }
 
-        return imax;
+        return 0;
     }
 
     /// <summary>
-    /// Snaps the point to the nearest endpoint of the segment if it is very close.
+    /// Computes the bounding box of the intersection area of two line segments.
     /// </summary>
-    /// <param name="point">The point to snap.</param>
-    /// <param name="segment">The segment to check.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void SnapToSegmentEndpoint(ref Vertex point, Segment segment)
+    /// <param name="a1">The first point of the first segment.</param>
+    /// <param name="a2">The second point of the first segment.</param>
+    /// <param name="b1">The first point of the second segment.</param>
+    /// <param name="b2">The second point of the second segment.</param>
+    /// <param name="result">The intersection bounding box if one exists, otherwise null.</param>
+    /// <returns>
+    /// <see langword="true"/> if the segments intersect; otherwise, <see langword="false"/>.
+    /// </returns>
+    private static bool TryGetIntersectionBoundingBox(Vertex a1, Vertex a2, Vertex b1, Vertex b2, [NotNullWhen(true)] out Box2? result)
     {
-        const double threshold = 0.00000001;
+        Vertex minA = Vertex.Min(a1, a2);
+        Vertex maxA = Vertex.Max(a1, a2);
+        Vertex minB = Vertex.Min(b1, b2);
+        Vertex maxB = Vertex.Max(b1, b2);
 
-        if (Vertex.Distance(point, segment.Source) < threshold)
+        Vertex interMin = Vertex.Max(minA, minB);
+        Vertex interMax = Vertex.Min(maxA, maxB);
+
+        if (interMin.X <= interMax.X && interMin.Y <= interMax.Y)
         {
-            point = segment.Source;
+            result = new Box2(interMin, interMax);
+            return true;
         }
-        else if (Vertex.Distance(point, segment.Target) < threshold)
-        {
-            point = segment.Target;
-        }
+
+        result = null;
+        return false;
     }
+
+    /// <summary>
+    /// Constrains a point to the given bounding box.
+    /// </summary>
+    /// <param name="p">The point to constrain.</param>
+    /// <param name="bbox">The bounding box.</param>
+    /// <returns>The constrained point.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vertex ConstrainToBoundingBox(Vertex p, Box2 bbox)
+        => Vertex.Min(Vertex.Max(p, bbox.Min), bbox.Max);
+
+    /// <summary>
+    /// Computes the point at a given fractional distance along a directed line segment.
+    /// </summary>
+    /// <param name="p">The starting vertex of the segment.</param>
+    /// <param name="s">The scalar factor representing the fractional distance along the segment.</param>
+    /// <param name="d">The direction vector of the segment.</param>
+    /// <returns>The interpolated vertex at the given fractional distance.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vertex MidPoint(Vertex p, double s, Vertex d) => p + (s * d);
 }

@@ -9,14 +9,29 @@ using GeoJSON.Text.Feature;
 using GeoJSON.Text.Geometry;
 using PolygonClipper.Tests.TestCases;
 using Xunit;
-
 using GeoPolygon = GeoJSON.Text.Geometry.Polygon;
 
 namespace PolygonClipper.Tests;
+
 public class GenericTestCases
 {
     public static IEnumerable<object[]> GetTestCases()
         => TestData.Generic.GetFileNames().Select(x => new object[] { x });
+
+    [Fact]
+    public Polygon Profile()
+    {
+        // Use this test for profiling purposes. (Rider)
+        FeatureCollection data = TestData.Generic.GetFeatureCollection("issue71.geojson");
+
+        IGeometryObject subjectGeometry = data.Features[0].Geometry;
+        IGeometryObject clippingGeometry = data.Features[1].Geometry;
+
+        Polygon subject = ConvertToPolygon(subjectGeometry);
+        Polygon clipping = ConvertToPolygon(clippingGeometry);
+
+        return PolygonClipper.Union(subject, clipping);
+    }
 
     [Theory]
     [MemberData(nameof(GetTestCases))]
@@ -71,6 +86,7 @@ public class GenericTestCases
                 {
                     contour.AddVertex(new Vertex(xy.Longitude, xy.Latitude));
                 }
+
                 polygon.Push(contour);
             }
 
@@ -89,6 +105,7 @@ public class GenericTestCases
                     {
                         contour.AddVertex(new Vertex(xy.Longitude, xy.Latitude));
                     }
+
                     polygon.Push(contour);
                 }
             }
