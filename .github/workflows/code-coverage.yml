@@ -29,6 +29,20 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      # See https://github.com/actions/checkout/issues/165#issuecomment-657673315
+      - name: Git Create LFS FileList
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Git Setup LFS Cache
+        uses: actions/cache@v4
+        id: lfs-cache
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+      - name: Git Pull LFS
+        run: git lfs pull
+
       - name: NuGet Install
         uses: NuGet/setup-nuget@v2
 
@@ -58,13 +72,6 @@ jobs:
         env:
           SIXLABORS_TESTING: True
           XUNIT_PATH: .\tests\PolygonClipper.Tests # Required for xunit
-
-      - name: Export Failed Output
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: actual_output_${{ runner.os }}_${{ matrix.options.framework }}${{ matrix.options.runtime }}.zip
-          path: tests/Images/ActualOutput/
 
       - name: Codecov Update
         uses: codecov/codecov-action@v4
