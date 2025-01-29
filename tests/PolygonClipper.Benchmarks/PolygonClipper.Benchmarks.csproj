@@ -29,8 +29,18 @@
   </Choose>
 
   <ItemGroup>
+    <Compile Include="..\PolygonClipper.Tests\TestData.cs" Link="TestData.cs" />
+    <Compile Include="..\PolygonClipper.Tests\TestEnvironment.cs" Link="TestEnvironment.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageReference Include="Clipper2" Version="1.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PolygonClipper\PolygonClipper.csproj" />
+    <ProjectReference Include="..\GeoJson\GeoJson.csproj" />
   </ItemGroup>
   
 </Project>
