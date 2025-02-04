@@ -59,7 +59,27 @@ public class PolygonClipper
     public static Polygon Intersection(Polygon subject, Polygon clip)
     {
         PolygonClipper clipper = new(subject, clip, BooleanOperation.Intersection);
-        return clipper.Run();
+        Polygon a =  clipper.Run();
+
+        Polygon polygons = new();
+
+
+        for (int i = 0; i < a.ContourCount; i++) {
+            Contour contour = a[i];
+            if (contour.IsExternal) {
+                // The exterior ring goes first
+                polygons.Push(contour);
+                // Followed by holes if any
+                for (int j = 0; j < contour.HoleCount; j++) {
+                    int holeId = contour.GetHoleIndex(j);
+                    polygons.Push(a[holeId]);
+                }
+                // polygons.Push(contour);
+            }
+        }
+
+
+        return polygons;
     }
 
     /// <summary>
@@ -140,7 +160,12 @@ public class PolygonClipper
         for (int i = 0; i < clipping.ContourCount; i++)
         {
             Contour contour = clipping[i];
-            contourId++;
+            bool exterior = operation != BooleanOperation.Difference;
+            if (exterior)
+            {
+                contourId++;
+            }
+
             for (int j = 0; j < contour.VertexCount - 1; j++)
             {
                 ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue, ref min, ref max);
@@ -243,7 +268,7 @@ public class PolygonClipper
     /// <param name="operation">The boolean operation being performed.</param>
     /// <param name="result">The resulting polygon if the operation is trivial.</param>
     /// <returns>
-    /// <see langword="true"/> if the operation results in a trivial case due to zero contours; 
+    /// <see langword="true"/> if the operation results in a trivial case due to zero contours;
     /// otherwise, <see langword="false"/>.
     /// </returns>
     private static bool TryTrivialOperationForEmptyPolygons(
