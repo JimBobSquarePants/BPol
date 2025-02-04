@@ -140,7 +140,12 @@ public class PolygonClipper
         for (int i = 0; i < clipping.ContourCount; i++)
         {
             Contour contour = clipping[i];
-            contourId++;
+            bool exterior = operation != BooleanOperation.Difference;
+            if (exterior)
+            {
+                contourId++;
+            }
+
             for (int j = 0; j < contour.VertexCount - 1; j++)
             {
                 ProcessSegment(contourId, contour.Segment(j), PolygonType.Clipping, eventQueue, ref min, ref max);
@@ -243,7 +248,7 @@ public class PolygonClipper
     /// <param name="operation">The boolean operation being performed.</param>
     /// <param name="result">The resulting polygon if the operation is trivial.</param>
     /// <returns>
-    /// <see langword="true"/> if the operation results in a trivial case due to zero contours; 
+    /// <see langword="true"/> if the operation results in a trivial case due to zero contours;
     /// otherwise, <see langword="false"/>.
     /// </returns>
     private static bool TryTrivialOperationForEmptyPolygons(
@@ -861,7 +866,26 @@ public class PolygonClipper
             result.Push(contour);
         }
 
-        return result;
+        Polygon polygon = new();
+
+
+        for (int i = 0; i < result.ContourCount; i++)
+        {
+            Contour contour = result[i];
+            if (contour.IsExternal)
+            {
+                // The exterior ring goes first
+                polygon.Push(contour);
+
+                // Followed by holes if any
+                for (int j = 0; j < contour.HoleCount; j++) {
+                    int holeId = contour.GetHoleIndex(j);
+                    polygon.Push(result[holeId]);
+                }
+            }
+        }
+
+        return polygon;
     }
 
     /// <summary>
