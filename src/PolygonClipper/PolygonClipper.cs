@@ -59,27 +59,7 @@ public class PolygonClipper
     public static Polygon Intersection(Polygon subject, Polygon clip)
     {
         PolygonClipper clipper = new(subject, clip, BooleanOperation.Intersection);
-        Polygon a =  clipper.Run();
-
-        Polygon polygons = new();
-
-
-        for (int i = 0; i < a.ContourCount; i++) {
-            Contour contour = a[i];
-            if (contour.IsExternal) {
-                // The exterior ring goes first
-                polygons.Push(contour);
-                // Followed by holes if any
-                for (int j = 0; j < contour.HoleCount; j++) {
-                    int holeId = contour.GetHoleIndex(j);
-                    polygons.Push(a[holeId]);
-                }
-                // polygons.Push(contour);
-            }
-        }
-
-
-        return polygons;
+        return clipper.Run();
     }
 
     /// <summary>
@@ -886,7 +866,26 @@ public class PolygonClipper
             result.Push(contour);
         }
 
-        return result;
+        Polygon polygon = new();
+
+
+        for (int i = 0; i < result.ContourCount; i++)
+        {
+            Contour contour = result[i];
+            if (contour.IsExternal)
+            {
+                // The exterior ring goes first
+                polygon.Push(contour);
+
+                // Followed by holes if any
+                for (int j = 0; j < contour.HoleCount; j++) {
+                    int holeId = contour.GetHoleIndex(j);
+                    polygon.Push(result[holeId]);
+                }
+            }
+        }
+
+        return polygon;
     }
 
     /// <summary>
